@@ -58,7 +58,7 @@ const corsOptions = { origin: 'https://chargemate-pcf5040ju-prushtpatel2-8642s-p
 // Note: Body parsing for JSON must come after CORS but before routes
 // Multer will handle multipart/form-data in the upload routes
 
-app.use(cors(corsOptions));
+app.use(cors());
 
 // Security middleware (configured to work with CORS)
 app.use(helmet({
