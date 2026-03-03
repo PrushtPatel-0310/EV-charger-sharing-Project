@@ -48,8 +48,7 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // CORS configuration (must be before other middleware)
-const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'chargemate-pcf5040ju-prushtpatel2-8642s-projects.vercel.app',
+const corsOptions = { origin: 'https://chargemate-pcf5040ju-prushtpatel2-8642s-projects.vercel.app',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
