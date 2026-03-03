@@ -9,6 +9,7 @@ import mongoose from 'mongoose';
 import { DateTime } from 'luxon';
 import { NotFoundError, ForbiddenError, ValidationError } from '../utils/errors.js';
 import { getIO } from '../socket.js';
+import { sendNotificationEmail, EMAIL_TYPES } from '../utils/emailService.js';
 
 export const getAllChargers = async (req, res, next) => {
   try {
@@ -25,7 +26,11 @@ export const getAllChargers = async (req, res, next) => {
       sortOrder = 'desc',
     } = req.query;
 
-    const query = { isActive: true };
+    const query = {
+      isActive: true,
+      disabledPermanently: { $ne: true },
+      'availability.isAvailable': true,
+    };
     if (req.user?._id) {
       query.owner = { $ne: req.user._id }; // hide own chargers from public feed
     }
@@ -181,6 +186,13 @@ export const createCharger = async (req, res, next) => {
       await req.user.save();
     }
 
+    sendNotificationEmail(req.user.email, EMAIL_TYPES.CHARGER_LISTED_HOST, {
+      chargerTitle: charger.title,
+      location: charger.location,
+      hostName: req.user.name,
+      status: 'Active',
+    }).catch((emailErr) => console.error('Charger listed email error:', emailErr.message));
+
     res.status(201).json({
       success: true,
       data: { charger },
@@ -241,12 +253,40 @@ export const deleteCharger = async (req, res, next) => {
 
 export const getMyChargers = async (req, res, next) => {
   try {
-    const chargers = await Charger.find({ owner: req.user._id })
+    const chargers = await Charger.find({
+      owner: req.user._id,
+      disabledPermanently: { $ne: true },
+    })
       .sort({ createdAt: -1 });
+
+    const chargerIds = chargers.map((charger) => charger._id);
+    const activeDisableWindows = chargerIds.length
+      ? await DisableWindow.find({
+        charger: { $in: chargerIds },
+        active: true,
+      })
+        .select('charger startTime endTime active reason')
+        .lean()
+      : [];
+
+    const windowsByCharger = activeDisableWindows.reduce((acc, window) => {
+      const key = window.charger.toString();
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(window);
+      return acc;
+    }, {});
+
+    const chargersWithWindows = chargers.map((charger) => {
+      const payload = charger.toObject();
+      payload.disableWindows = windowsByCharger[charger._id.toString()] || [];
+      return payload;
+    });
 
     res.json({
       success: true,
-      data: { chargers },
+      data: { chargers: chargersWithWindows },
     });
   } catch (error) {
     next(error);
@@ -436,7 +476,7 @@ export const disableCharger = async (req, res, next) => {
   session.startTransaction();
 
   try {
-    const { mode, startDate, endDate, reason, startTime, endTime } = req.body;
+    const { mode, startDate, endDate, reason } = req.body;
     const charger = await Charger.findById(req.params.id).session(session);
 
     if (!charger) throw new NotFoundError('Charger');
@@ -444,8 +484,8 @@ export const disableCharger = async (req, res, next) => {
       throw new ForbiddenError('You can only manage your own chargers');
     }
 
-    if (!['temporary', 'permanent', 'today'].includes(mode)) {
-      throw new ValidationError('Mode must be temporary, today, or permanent');
+    if (!['temporary', 'permanent'].includes(mode)) {
+      throw new ValidationError('Mode must be temporary or permanent');
     }
 
     let windowStart;
@@ -463,23 +503,6 @@ export const disableCharger = async (req, res, next) => {
       if (windowEnd <= windowStart) {
         throw new ValidationError('End date must be after start date');
       }
-    } else if (mode === 'today') {
-      const today = DateTime.now();
-      if (!startTime || !endTime) {
-        throw new ValidationError('Start and end time are required for disabling today');
-      }
-      if (!/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/.test(startTime) || !/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/.test(endTime)) {
-        throw new ValidationError('Time must be in HH:mm format');
-      }
-
-      const startParts = startTime.split(':').map(Number);
-      const endParts = endTime.split(':').map(Number);
-      windowStart = today.set({ hour: startParts[0], minute: startParts[1], second: 0, millisecond: 0 }).toJSDate();
-      windowEnd = today.set({ hour: endParts[0], minute: endParts[1], second: 0, millisecond: 0 }).toJSDate();
-
-      if (windowEnd <= windowStart) {
-        throw new ValidationError('End time must be after start time');
-      }
     } else {
       windowStart = new Date();
       // Far future end to block permanently
@@ -492,7 +515,7 @@ export const disableCharger = async (req, res, next) => {
         charger: charger._id,
         startTime: windowStart,
         endTime: windowEnd,
-        reason: reason || (mode === 'permanent' ? 'Disabled permanently' : mode === 'today' ? 'Disabled for today' : 'Disabled temporarily'),
+        reason: reason || (mode === 'permanent' ? 'Disabled permanently' : 'Disabled temporarily'),
         active: true,
       },
     ], { session });
@@ -513,13 +536,17 @@ export const disableCharger = async (req, res, next) => {
       windowEnd,
       reason: reason || (mode === 'permanent'
         ? 'Charger permanently disabled'
-        : mode === 'today'
-          ? 'Charger disabled for today'
-          : 'Charger temporarily disabled'),
+        : 'Charger temporarily disabled'),
       session,
     });
 
     await session.commitTransaction();
+
+    sendNotificationEmail(req.user.email, EMAIL_TYPES.CHARGER_DISABLED_HOST, {
+      chargerTitle: charger.title,
+      hostName: req.user.name,
+      status: reason || mode,
+    }).catch((emailErr) => console.error('Charger disabled email error:', emailErr.message));
 
     // Emit chat updates for cancelled bookings after transaction commits
     const io = getIO();
@@ -542,9 +569,7 @@ export const disableCharger = async (req, res, next) => {
       message:
         mode === 'permanent'
           ? 'Charger disabled permanently'
-          : mode === 'today'
-            ? 'Charger disabled for today'
-            : 'Charger disabled temporarily',
+          : 'Charger disabled temporarily',
     });
   } catch (error) {
     await session.abortTransaction();

@@ -4,6 +4,7 @@ import { chargerService } from '../services/chargerService.js';
 import { bookingService } from '../services/bookingService.js';
 import { slotService } from '../services/slotService.js';
 import { chatService } from '../services/chatService.js';
+import { reviewService } from '../services/reviewService.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Map from '../components/Map.jsx';
 
@@ -36,6 +37,12 @@ const ChargerDetail = () => {
   const [confirmationDetails, setConfirmationDetails] = useState(null);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState('');
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState('');
+
+  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const isSelectedDateToday = selectedDate === todayIso;
 
   /* ------------------ FETCH CHARGER ------------------ */
   useEffect(() => {
@@ -52,6 +59,24 @@ const ChargerDetail = () => {
 
     fetchCharger();
     setSelectedDate(new Date().toISOString().slice(0, 10));
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    async function loadReviews() {
+      try {
+        setReviewsLoading(true);
+        setReviewsError('');
+        const res = await reviewService.getByCharger(id, { limit: 3 });
+        setReviews(res.data?.reviews || []);
+      } catch (err) {
+        setReviewsError('Failed to load reviews');
+      } finally {
+        setReviewsLoading(false);
+      }
+    }
+
+    loadReviews();
   }, [id]);
 
   /* ------------------ LOAD SLOTS ------------------ */
@@ -99,6 +124,89 @@ const ChargerDetail = () => {
       }).format(new Date(iso));
     };
 
+  const parseTimeParts = (slotTime) => {
+    if (!slotTime) return null;
+    const normalized = String(slotTime).trim().toUpperCase();
+
+    const twentyFourHourMatch = normalized.match(/^(\d{1,2}):(\d{2})$/);
+    if (twentyFourHourMatch) {
+      const hour = Number(twentyFourHourMatch[1]);
+      const minute = Number(twentyFourHourMatch[2]);
+      if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+        return { hour, minute };
+      }
+      return null;
+    }
+
+    const twelveHourMatch = normalized.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
+    if (twelveHourMatch) {
+      let hour = Number(twelveHourMatch[1]);
+      const minute = Number(twelveHourMatch[2]);
+      const period = twelveHourMatch[3];
+
+      if (hour < 1 || hour > 12 || minute < 0 || minute > 59) {
+        return null;
+      }
+
+      if (period === 'AM') {
+        hour = hour === 12 ? 0 : hour;
+      } else {
+        hour = hour === 12 ? 12 : hour + 12;
+      }
+
+      return { hour, minute };
+    }
+
+    return null;
+  };
+
+  const parseSelectedDateLocal = (value) => {
+    if (!value) return null;
+
+    if (typeof value === 'string') {
+      const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (match) {
+        const year = Number(match[1]);
+        const month = Number(match[2]) - 1;
+        const day = Number(match[3]);
+        return new Date(year, month, day, 0, 0, 0, 0);
+      }
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 0, 0, 0, 0);
+  };
+
+  const extractSlotStartTime = (slot) => {
+    if (slot?.startTime) {
+      return slot.startTime;
+    }
+
+    if (!slot?.start) {
+      return null;
+    }
+
+    if (!slot?.start) {
+      return null;
+    }
+
+    return formatTime(slot.start).replace(/\s+/g, ' ').trim();
+  };
+
+  const isSlotInPast = (slotDate, slotTime) => {
+    const timeParts = parseTimeParts(slotTime);
+    if (!timeParts) return false;
+
+    const dateBase = parseSelectedDateLocal(slotDate);
+    if (!dateBase) return false;
+
+    const slotDateTime = new Date(dateBase);
+    slotDateTime.setHours(timeParts.hour, timeParts.minute, 0, 0);
+
+    return slotDateTime.getTime() < Date.now();
+  };
+
   const formatDateDisplay = (date) =>
     new Date(date).toLocaleDateString('en-IN', {
       day: 'numeric',
@@ -120,6 +228,13 @@ const ChargerDetail = () => {
 
     setSelectionError('');
 
+    const slotStartTime = extractSlotStartTime(slot);
+    if (isSlotInPast(selectedDate || slot.start, slotStartTime)) {
+      setSelectionError('Cannot book past time slots.');
+      alert('Cannot book past time slots.');
+      return;
+    }
+
     // Deselect when clicking inside current selection
     if (isSlotInSelection(slot)) {
       setStartTime('');
@@ -136,9 +251,9 @@ const ChargerDetail = () => {
     const rangeStart = new Date(slot.start) < new Date(startTime) ? slot.start : startTime;
     const rangeEnd = new Date(slot.end) > new Date(endTime || slot.end) ? slot.end : endTime;
 
-    const nowIso = new Date().toISOString();
     const available = slots
-      .filter((s) => s.status === 'available' && s.start >= nowIso)
+      .filter((s) => s.status === 'available')
+      .filter((s) => !isSlotInPast(selectedDate || s.start, extractSlotStartTime(s)))
       .sort((a, b) => new Date(a.start) - new Date(b.start));
 
     const inRange = available.filter(
@@ -175,15 +290,14 @@ const ChargerDetail = () => {
 
   const selectedSlotsList = useMemo(() => {
     if (!startTime || !endTime) return [];
-    const nowIso = new Date().toISOString();
     return slots.filter(
       (s) =>
         s.start >= startTime &&
         s.end <= endTime &&
         s.status === 'available' &&
-        s.start >= nowIso
+        !isSlotInPast(selectedDate || s.start, extractSlotStartTime(s))
     );
-  }, [slots, startTime, endTime]);
+  }, [slots, startTime, endTime, selectedDate]);
 
   const pricePerSlot = charger ? charger.pricePerHour / 2 : 0;
   const totalAmount = selectedSlotsList.length * pricePerSlot;
@@ -325,6 +439,15 @@ const ChargerDetail = () => {
             <h1 className="text-3xl font-bold">{charger.title}</h1>
             <p className="text-gray-600 mt-2">{charger.description}</p>
 
+            <div className="mt-3 text-sm text-gray-800">
+              <span className="font-semibold">Rating:</span>{' '}
+              {charger.totalReviews > 0 ? (
+                <span>⭐ {charger.rating} ({charger.totalReviews} reviews)</span>
+              ) : (
+                <span>No reviews yet</span>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
               <div><b>Type:</b> {charger.chargerType}</div>
               <div><b>Connector:</b> {charger.connectorType}</div>
@@ -359,41 +482,48 @@ const ChargerDetail = () => {
   {slotsError && <p className="text-sm text-red-600">{slotsError}</p>}
 
   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-4">
-    {slots.map((slot) => (
-      <button
-        key={slot.start}
-        onClick={() => {
-          if (isOwner) return;
-          toggleSelection(slot);
-        }}
-        disabled={
-          isOwner ||
-          slot.status !== 'available' ||
-          new Date(slot.start) < new Date()
-        }
-        className={`text-xs p-2 rounded border transition
-          ${(() => {
-            const isPast = new Date(slot.start) < new Date();
-            const isSelected =
-              !isOwner &&
-              startTime &&
-              endTime &&
-              slot.start >= startTime &&
-              slot.end <= endTime &&
-              slot.status === 'available';
+    {slots.map((slot) => {
+      const slotStartTime = extractSlotStartTime(slot);
+      const isPastSlot = isSlotInPast(selectedDate || slot.start, slotStartTime);
+      const isSelected =
+        !isOwner &&
+        startTime &&
+        endTime &&
+        slot.start >= startTime &&
+        slot.end <= endTime &&
+        slot.status === 'available';
 
-            if (isPast) return 'bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed';
-            if (isSelected) return 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700';
+      const isDisabledSlot = isOwner || slot.status !== 'available' || isPastSlot;
 
-            return slot.status === 'available'
-              ? 'bg-green-100 border-green-300 hover:bg-green-200'
-              : 'bg-red-100 border-red-200 cursor-not-allowed';
-          })()}`}
-        title={new Date(slot.start) < new Date() ? 'Past slots cannot be booked' : ''}
-      >
-        {formatTime(slot.start)} - {formatTime(slot.end)}
-      </button>
-    ))}
+      return (
+        <button
+          key={slot.start}
+          onClick={() => {
+            if (isDisabledSlot) {
+              if (isPastSlot) {
+                setSelectionError('Cannot book past time slots.');
+                alert('Cannot book past time slots.');
+              }
+              return;
+            }
+            toggleSelection(slot);
+          }}
+          disabled={isDisabledSlot}
+          className={`text-xs p-2 rounded border transition ${
+            isPastSlot
+              ? 'bg-gray-200 border-gray-300 text-gray-500 opacity-70 cursor-not-allowed'
+              : isSelected
+                ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
+                : slot.status === 'available'
+                  ? 'bg-green-100 border-green-300 hover:bg-green-200'
+                  : 'bg-red-100 border-red-200 cursor-not-allowed'
+          }`}
+          title={isPastSlot ? 'Past slots cannot be booked' : ''}
+        >
+          {formatTime(slot.start)} - {formatTime(slot.end)}
+        </button>
+      );
+    })}
   </div>
 
   {!isOwner && (
@@ -444,6 +574,45 @@ const ChargerDetail = () => {
 </div>
            
         </div>
+      </div>
+    </div>
+
+    <div className="container mx-auto max-w-6xl px-4 pb-10">
+      <div className="bg-white rounded-xl shadow p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">Recent Reviews</h2>
+          <div className="text-sm text-gray-700">
+            {charger.totalReviews > 0 ? (
+              <span>Average: ⭐ {charger.rating} ({charger.totalReviews} reviews)</span>
+            ) : (
+              <span>No reviews yet</span>
+            )}
+          </div>
+        </div>
+
+        {reviewsLoading && <p className="text-sm">Loading reviews...</p>}
+        {reviewsError && <p className="text-sm text-red-600">{reviewsError}</p>}
+
+        {!reviewsLoading && !reviewsError && (
+          reviews.length > 0 ? (
+            <div className="space-y-4">
+              {reviews.map((review) => (
+                <div key={review._id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold text-gray-800">{review.user?.name || 'Guest'}</div>
+                    <div className="text-sm text-gray-700">⭐ {review.rating}</div>
+                  </div>
+                  {review.comment && (
+                    <p className="text-sm text-gray-700 whitespace-pre-line">{review.comment}</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-2">{new Date(review.createdAt).toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600">No reviews yet</p>
+          )
+        )}
       </div>
     </div>
 

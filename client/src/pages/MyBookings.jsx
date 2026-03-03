@@ -1,27 +1,180 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 import { bookingService } from '../services/bookingService.js';
+import { chatService } from '../services/chatService.js';
+import { reviewService } from '../services/reviewService.js';
 
 const MyBookings = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [locationFilter, setLocationFilter] = useState('');
+  const [reviewModal, setReviewModal] = useState({ open: false, booking: null, mode: 'add' });
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [reviewMessage, setReviewMessage] = useState('');
+  const [bookingReviews, setBookingReviews] = useState({});
+  const [chatLoadingId, setChatLoadingId] = useState(null);
+  const [chatErrorByBooking, setChatErrorByBooking] = useState({});
+  const [deleteReviewLoadingId, setDeleteReviewLoadingId] = useState(null);
+
+  const formatBookingDateTime = (value, timezone = 'UTC') => {
+    try {
+      return new Intl.DateTimeFormat('en-IN', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: timezone,
+      }).format(new Date(value));
+    } catch {
+      return new Date(value).toLocaleString();
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
   }, []);
 
+  useEffect(() => {
+    if (user?._id) {
+      fetchUserReviews();
+    }
+  }, [user]);
+
   const fetchBookings = async () => {
     try {
-      const response = await bookingService.getAll();
-      setBookings(response.data?.bookings || []);
+      const response = await bookingService.getAll({ type: 'bookings' });
+      const fetchedBookings = response.data?.bookings || [];
+      setBookings(fetchedBookings);
+      setBookingReviews((prev) => {
+        const next = { ...prev };
+        fetchedBookings.forEach((booking) => {
+          if (booking.review) {
+            next[booking._id] = booking.review;
+          }
+        });
+        return next;
+      });
     } catch (error) {
       console.error('Error fetching bookings:', error);
       setError('Unable to load bookings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserReviews = async () => {
+    if (!user?._id) return;
+    try {
+      const res = await reviewService.getByUser(user._id);
+      const mapped = (res.data?.reviews || []).reduce((acc, review) => {
+        if (review.booking) {
+          acc[review.booking] = review;
+        }
+        return acc;
+      }, {});
+      setBookingReviews((prev) => ({ ...mapped, ...prev }));
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+    }
+  };
+
+  const openReviewModal = (booking, mode = 'add') => {
+    const existing = bookingReviews[booking._id];
+    setReviewModal({ open: true, booking, mode });
+    setReviewForm({
+      rating: existing?.rating ?? 5,
+      comment: existing?.comment ?? '',
+    });
+    setReviewError('');
+    setReviewMessage('');
+  };
+
+  const closeReviewModal = () => {
+    setReviewModal({ open: false, booking: null, mode: 'add' });
+    setReviewForm({ rating: 5, comment: '' });
+    setReviewSubmitting(false);
+    setReviewError('');
+  };
+
+  const submitReview = async () => {
+    if (!reviewModal.booking) return;
+    const bookingId = reviewModal.booking._id;
+    try {
+      setReviewSubmitting(true);
+      setReviewError('');
+      setReviewMessage('');
+      let response;
+      if (reviewModal.mode === 'edit' && bookingReviews[bookingId]) {
+        response = await reviewService.update(bookingReviews[bookingId]._id, {
+          rating: Number(reviewForm.rating),
+          comment: reviewForm.comment,
+        });
+      } else {
+        response = await reviewService.create({
+          bookingId,
+          rating: Number(reviewForm.rating),
+          comment: reviewForm.comment,
+        });
+      }
+
+      const savedReview = response?.data?.review;
+      if (savedReview) {
+        setBookingReviews((prev) => ({ ...prev, [bookingId]: savedReview }));
+      }
+
+      setReviewMessage(reviewModal.mode === 'edit' ? 'Review updated.' : 'Review submitted. Thank you!');
+      closeReviewModal();
+      fetchUserReviews();
+    } catch (err) {
+      const message = err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to submit review';
+      setReviewError(message);
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const handleDeleteReview = async (bookingId, reviewId) => {
+    if (!reviewId) return;
+    try {
+      setDeleteReviewLoadingId(bookingId);
+      setReviewError('');
+      setReviewMessage('');
+      await reviewService.remove(reviewId);
+      setBookingReviews((prev) => {
+        const next = { ...prev };
+        delete next[bookingId];
+        return next;
+      });
+      setReviewMessage('Review deleted.');
+    } catch (err) {
+      const message = err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete review';
+      setReviewError(message);
+    } finally {
+      setDeleteReviewLoadingId(null);
+    }
+  };
+
+  const handleMessageOwner = async (booking) => {
+    if (!booking) return;
+    try {
+      setChatLoadingId(booking._id);
+      setChatErrorByBooking((prev) => ({ ...prev, [booking._id]: '' }));
+      const res = await chatService.startOrUpgrade({ chargerId: booking.charger._id, bookingId: booking._id });
+      const chatId = res.data?.chat?._id;
+      if (chatId) {
+        navigate(`/chats/${chatId}`, { state: { chargerId: booking.charger._id, bookingId: booking._id } });
+      }
+    } catch (err) {
+      const message = err?.response?.data?.message || 'Unable to open chat';
+      setChatErrorByBooking((prev) => ({ ...prev, [booking._id]: message }));
+    } finally {
+      setChatLoadingId(null);
     }
   };
 
@@ -56,6 +209,7 @@ const MyBookings = () => {
   }
 
   return (
+    <>
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">My Bookings</h1>
 
@@ -96,38 +250,95 @@ const MyBookings = () => {
         </div>
       )}
 
+      {reviewMessage && (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {reviewMessage}
+        </div>
+      )}
+
+      {reviewError && !reviewModal.open && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {reviewError}
+        </div>
+      )}
+
       {filteredBookings.length > 0 ? (
         <div className="space-y-4">
-          {visibleBookings.map((booking) => (
-            <div key={booking._id} className="card">
-              <div className="flex justify-between items-start">
-                <div>
-                  <Link
-                    to={`/chargers/${booking.charger._id}`}
-                    className="text-xl font-semibold text-primary-600 hover:underline"
-                  >
-                    {booking.charger.title}
-                  </Link>
-                  <p className="text-gray-600 mt-2">
-                    {new Date(booking.startTime).toLocaleString()} -{' '}
-                    {new Date(booking.endTime).toLocaleString()}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Status: <span className="capitalize">{booking.status}</span>
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary-600">₹{booking.totalPrice}</p>
-                  <Link
-                    to={`/bookings/${booking._id}`}
-                    className="text-sm text-primary-600 hover:underline"
-                  >
-                    View Details →
-                  </Link>
+          {visibleBookings.map((booking) => {
+            const review = bookingReviews[booking._id];
+            const bookingTimezone = booking.charger?.availabilityTemplate?.timezone || 'UTC';
+            return (
+              <div key={booking._id} className="card">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <Link
+                      to={`/chargers/${booking.charger._id}`}
+                      className="text-xl font-semibold text-primary-600 hover:underline"
+                    >
+                      {booking.charger.title}
+                    </Link>
+                    <p className="text-gray-600 mt-2">
+                      {formatBookingDateTime(booking.startTime, bookingTimezone)} -{' '}
+                      {formatBookingDateTime(booking.endTime, bookingTimezone)}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Status: <span className="capitalize">{booking.status}</span>
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button
+                        className="btn btn-outline text-sm"
+                        onClick={() => handleMessageOwner(booking)}
+                        disabled={chatLoadingId === booking._id}
+                      >
+                        {chatLoadingId === booking._id ? 'Opening chat...' : 'Message owner'}
+                      </button>
+
+                      {booking.status === 'completed' && (
+                        review ? (
+                          <>
+                            <button
+                              className="btn btn-outline text-sm"
+                              onClick={() => openReviewModal(booking, 'edit')}
+                            >
+                              Edit Review
+                            </button>
+                            <button
+                              className="btn btn-outline text-sm text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => handleDeleteReview(booking._id, review._id)}
+                              disabled={deleteReviewLoadingId === booking._id}
+                            >
+                              {deleteReviewLoadingId === booking._id ? 'Deleting...' : 'Delete Review'}
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            className="btn btn-outline text-sm"
+                            onClick={() => openReviewModal(booking, 'add')}
+                          >
+                            Add Review
+                          </button>
+                        )
+                      )}
+                    </div>
+
+                    {chatErrorByBooking[booking._id] && (
+                      <p className="mt-2 text-sm text-red-600">{chatErrorByBooking[booking._id]}</p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-primary-600">₹{booking.totalPrice}</p>
+                    <Link
+                      to={`/bookings/${booking._id}`}
+                      className="text-sm text-primary-600 hover:underline"
+                    >
+                      View Details →
+                    </Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {filteredBookings.length > 5 && (
             <div className="text-center">
               <button
@@ -148,6 +359,57 @@ const MyBookings = () => {
         </div>
       )}
     </div>
+
+    {reviewModal.open && reviewModal.booking && (
+      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 px-4">
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+          <h3 className="text-xl font-semibold mb-1">{reviewModal.mode === 'edit' ? 'Edit Review' : 'Add Review'}</h3>
+          <p className="text-sm text-gray-600 mb-4">{reviewModal.booking.charger.title}</p>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Rating</label>
+              <select
+                className="input w-full"
+                value={reviewForm.rating}
+                onChange={(e) => setReviewForm((prev) => ({ ...prev, rating: e.target.value }))}
+              >
+                {[5, 4, 3, 2, 1].map((value) => (
+                  <option key={value} value={value}>{value}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Comment</label>
+              <textarea
+                className="input w-full"
+                rows="4"
+                placeholder="Share your experience"
+                value={reviewForm.comment}
+                onChange={(e) => setReviewForm((prev) => ({ ...prev, comment: e.target.value }))}
+              ></textarea>
+            </div>
+            {reviewError && (
+              <p className="text-sm text-red-600">{reviewError}</p>
+            )}
+          </div>
+
+          <div className="flex gap-3 mt-5">
+            <button className="btn w-1/2" onClick={closeReviewModal} disabled={reviewSubmitting}>
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary w-1/2"
+              onClick={submitReview}
+              disabled={reviewSubmitting}
+            >
+              {reviewSubmitting ? 'Saving...' : reviewModal.mode === 'edit' ? 'Update Review' : 'Submit Review'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   );
 };
 

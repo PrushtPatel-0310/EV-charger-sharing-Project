@@ -1,58 +1,45 @@
 import Review from '../models/Review.js';
 import Booking from '../models/Booking.js';
+import Charger from '../models/Charger.js';
 import { NotFoundError, ForbiddenError, ValidationError, ConflictError } from '../utils/errors.js';
 
 export const createReview = async (req, res, next) => {
   try {
-    const { bookingId, rating, comment, type } = req.body;
+    const { bookingId, rating, comment } = req.body;
 
-    const booking = await Booking.findById(bookingId)
-      .populate('charger')
-      .populate('renter')
-      .populate('owner');
+    const booking = await Booking.findById(bookingId).populate('charger');
 
     if (!booking) {
       throw new NotFoundError('Booking');
     }
 
-    // Check if user is the renter
-    if (booking.renter._id.toString() !== req.user._id.toString()) {
+    if (booking.renter.toString() !== req.user._id.toString()) {
       throw new ForbiddenError('Only the renter can create a review');
     }
 
-    // Check if booking is completed
     if (booking.status !== 'completed') {
       throw new ValidationError('Can only review completed bookings');
     }
 
-    // Check if review already exists
     const existingReview = await Review.findOne({ booking: bookingId });
     if (existingReview) {
       throw new ConflictError('Review already exists for this booking');
     }
 
-    const reviewData = {
+    const review = await Review.create({
       booking: bookingId,
       charger: booking.charger._id,
-      reviewer: req.user._id,
+      user: req.user._id,
       rating,
       comment,
-      type: type || 'charger',
-    };
+    });
 
-    // Set reviewee based on type
-    if (type === 'owner') {
-      reviewData.reviewee = booking.owner._id;
-    } else {
-      reviewData.reviewee = booking.owner._id; // Default to owner for charger reviews
+    const populatedReview = await Review.findById(review._id).populate('user', 'name avatar');
+
+    const charger = await Charger.findById(booking.charger._id);
+    if (charger) {
+      await charger.updateRating();
     }
-
-    const review = await Review.create(reviewData);
-
-    const populatedReview = await Review.findById(review._id)
-      .populate('reviewer', 'name avatar')
-      .populate('reviewee', 'name avatar')
-      .populate('charger', 'title');
 
     res.status(201).json({
       success: true,
@@ -66,9 +53,11 @@ export const createReview = async (req, res, next) => {
 
 export const getChargerReviews = async (req, res, next) => {
   try {
+    const limit = Math.min(Number(req.query.limit) || 10, 50);
     const reviews = await Review.find({ charger: req.params.chargerId })
-      .populate('reviewer', 'name avatar')
-      .sort({ createdAt: -1 });
+      .populate('user', 'name avatar')
+      .sort({ createdAt: -1 })
+      .limit(limit);
 
     res.json({
       success: true,
@@ -81,8 +70,7 @@ export const getChargerReviews = async (req, res, next) => {
 
 export const getUserReviews = async (req, res, next) => {
   try {
-    const reviews = await Review.find({ reviewee: req.params.userId })
-      .populate('reviewer', 'name avatar')
+    const reviews = await Review.find({ user: req.params.userId })
       .populate('charger', 'title')
       .sort({ createdAt: -1 });
 
@@ -104,7 +92,7 @@ export const updateReview = async (req, res, next) => {
       throw new NotFoundError('Review');
     }
 
-    if (review.reviewer.toString() !== req.user._id.toString()) {
+    if (review.user.toString() !== req.user._id.toString()) {
       throw new ForbiddenError('You can only update your own reviews');
     }
 
@@ -114,9 +102,13 @@ export const updateReview = async (req, res, next) => {
     await review.save();
 
     const populatedReview = await Review.findById(review._id)
-      .populate('reviewer', 'name avatar')
-      .populate('reviewee', 'name avatar')
+      .populate('user', 'name avatar')
       .populate('charger', 'title');
+
+    const charger = await Charger.findById(review.charger);
+    if (charger) {
+      await charger.updateRating();
+    }
 
     res.json({
       success: true,
@@ -136,7 +128,7 @@ export const deleteReview = async (req, res, next) => {
       throw new NotFoundError('Review');
     }
 
-    if (review.reviewer.toString() !== req.user._id.toString()) {
+    if (review.user.toString() !== req.user._id.toString()) {
       throw new ForbiddenError('You can only delete your own reviews');
     }
 

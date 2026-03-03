@@ -2,12 +2,44 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { chargerService } from '../services/chargerService.js';
 
+const toDateOnlyKey = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getStatusForToday = (charger) => {
+  if (!charger?.isActive) {
+    return 'Inactive';
+  }
+
+  const todayKey = toDateOnlyKey(new Date());
+  if (!todayKey) {
+    return 'Active';
+  }
+
+  const disableWindows = Array.isArray(charger?.disableWindows) ? charger.disableWindows : [];
+  const isDisabledToday = disableWindows.some((window) => {
+    if (!window?.active) return false;
+
+    const startKey = toDateOnlyKey(window.startTime);
+    const endKey = toDateOnlyKey(window.endTime);
+
+    if (!startKey || !endKey) return false;
+    return todayKey >= startKey && todayKey <= endKey;
+  });
+
+  return isDisabledToday ? 'Inactive' : 'Active';
+};
+
 const MyChargers = () => {
   const [chargers, setChargers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [disableModal, setDisableModal] = useState({ open: false, charger: null, step: 'choice', mode: null });
   const [tempRange, setTempRange] = useState({ startDate: '', endDate: '' });
-  const [todayRange, setTodayRange] = useState({ startTime: '', endTime: '' });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -29,7 +61,6 @@ const MyChargers = () => {
   const closeModal = () => {
     setDisableModal({ open: false, charger: null, step: 'choice', mode: null });
     setTempRange({ startDate: '', endDate: '' });
-    setTodayRange({ startTime: '', endTime: '' });
     setSubmitting(false);
   };
 
@@ -46,26 +77,21 @@ const MyChargers = () => {
       payload.endDate = tempRange.endDate;
     }
 
-    if (disableModal.mode === 'today') {
-      if (!todayRange.startTime || !todayRange.endTime) {
-        alert('Please select a start and end time.');
-        return;
-      }
-      payload.startTime = todayRange.startTime;
-      payload.endTime = todayRange.endTime;
-    }
-
     setSubmitting(true);
     try {
       await chargerService.disable(disableModal.charger._id, payload);
-      await fetchChargers();
+
+      if (disableModal.mode === 'permanent') {
+        // Optimistically remove permanently disabled charger from local list
+        setChargers((prev) => prev.filter((c) => c._id !== disableModal.charger._id));
+      } else {
+        await fetchChargers();
+      }
       closeModal();
       alert(
         disableModal.mode === 'permanent'
           ? 'Charger disabled permanently.'
-          : disableModal.mode === 'today'
-            ? 'Charger disabled for today.'
-            : 'Charger disabled for the selected dates.'
+          : 'Charger disabled for the selected dates.'
       );
     } catch (error) {
       console.error('Error disabling charger:', error);
@@ -89,14 +115,18 @@ const MyChargers = () => {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">My Chargers</h1>
           <Link to="/create-charger" className="btn btn-primary">
-            Add New Charger
+            List Charger
           </Link>
         </div>
 
         {chargers.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {chargers.map((charger) => (
-              <div key={charger._id} className="card">
+            {chargers.map((charger) => {
+              const status = getStatusForToday(charger);
+              const isActiveToday = status === 'Active';
+
+              return (
+                <div key={charger._id} className="card">
                 <Link
                   to={`/chargers/${charger._id}`}
                   className="text-xl font-semibold text-primary-600 hover:underline mb-2 block"
@@ -114,8 +144,8 @@ const MyChargers = () => {
                 </p>
                 <p className="text-sm mt-2">
                   Status:{' '}
-                  <span className={charger.isActive ? 'text-green-600' : 'text-red-600'}>
-                    {charger.isActive ? 'Active' : 'Inactive'}
+                  <span className={isActiveToday ? 'text-green-600' : 'text-red-600'}>
+                    {status}
                   </span>
                 </p>
                 <div className="mt-4 grid grid-cols-1 gap-2">
@@ -129,8 +159,9 @@ const MyChargers = () => {
                     Disable
                   </button>
                 </div>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12">
@@ -147,8 +178,6 @@ const MyChargers = () => {
         setDisableModal={setDisableModal}
         tempRange={tempRange}
         setTempRange={setTempRange}
-        todayRange={todayRange}
-        setTodayRange={setTodayRange}
         onClose={closeModal}
         onConfirm={() => handleDisable()}
         submitting={submitting}
@@ -185,12 +214,6 @@ const DisableModalContent = ({ state, tempRange, setTempRange, onClose, onConfir
           </button>
           <button
             className="btn btn-outline w-full"
-            onClick={() => state.setStep?.('today') || null}
-          >
-            Disable for Today
-          </button>
-          <button
-            className="btn btn-outline w-full"
             onClick={() => state.setStep?.('permanent') || null}
           >
             Disable Permanently
@@ -211,41 +234,6 @@ const DisableModalContent = ({ state, tempRange, setTempRange, onClose, onConfir
           <button className="btn w-1/2" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary w-1/2" onClick={onConfirm} disabled={submitting}>
             {submitting ? 'Disabling...' : 'Confirm'}
-          </button>
-        </div>
-      </>
-    );
-  }
-
-  if (state.step === 'today') {
-    return (
-      <>
-        <h3 className="text-xl font-bold mb-4">Disable for Today</h3>
-        <p className="text-sm text-gray-700 mb-4">Pick a time window for today. Bookings inside this window will be cancelled and refunded.</p>
-        <div className="space-y-3 mb-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Start Time</label>
-            <input
-              type="time"
-              className="input w-full"
-              value={state.todayRange?.startTime}
-              onChange={(e) => state.setTodayRange?.((prev) => ({ ...prev, startTime: e.target.value }))}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">End Time</label>
-            <input
-              type="time"
-              className="input w-full"
-              value={state.todayRange?.endTime}
-              onChange={(e) => state.setTodayRange?.((prev) => ({ ...prev, endTime: e.target.value }))}
-            />
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <button className="btn w-1/2" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary w-1/2" onClick={onConfirm} disabled={submitting}>
-            {submitting ? 'Disabling...' : 'Disable'}
           </button>
         </div>
       </>
@@ -286,14 +274,12 @@ const DisableModalContent = ({ state, tempRange, setTempRange, onClose, onConfir
   );
 };
 
-const DisableModal = ({ disableModal, setDisableModal, tempRange, setTempRange, todayRange, setTodayRange, onClose, onConfirm, submitting }) => {
+const DisableModal = ({ disableModal, setDisableModal, tempRange, setTempRange, onClose, onConfirm, submitting }) => {
   if (!disableModal.open) return null;
 
   const stateWithSetter = {
     ...disableModal,
-    setStep: (step) => setDisableModal((prev) => ({ ...prev, step, mode: step === 'permanent' ? 'permanent' : step === 'today' ? 'today' : 'temporary' })),
-    todayRange,
-    setTodayRange,
+    setStep: (step) => setDisableModal((prev) => ({ ...prev, step, mode: step === 'permanent' ? 'permanent' : 'temporary' })),
   };
 
   return (

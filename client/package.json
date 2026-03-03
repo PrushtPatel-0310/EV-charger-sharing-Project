@@ -8,9 +8,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^7.9.0",
     "@turf/turf": "^7.0.0",
     "axios": "^1.6.2",
     "leaflet": "^1.9.4",
+    "lucide-react": "^0.464.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",

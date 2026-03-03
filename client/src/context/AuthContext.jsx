@@ -33,19 +33,36 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (credentials) => {
-    const response = await authService.login(credentials);
-    setUser(response.data.user);
-    return response;
+    // OTP step 1
+    return authService.loginRequestOtp(credentials);
   };
 
   const register = async (userData) => {
-    try {
-      const response = await authService.register(userData);
-      setUser(response.data.user);
-      return response;
-    } catch (error) {
-      throw error;
+    return authService.registerRequestOtp(userData);
+  };
+
+  const verifyLoginOtp = async ({ email, otp }) => {
+    const response = await authService.verifyLoginOtp({ email, otp });
+    const { user: userPayload, accessToken } = response?.data || {};
+    if (accessToken) {
+      localStorage.setItem('accessToken', accessToken);
     }
+    if (userPayload) {
+      setUser(userPayload);
+    }
+    return response;
+  };
+
+  const verifySignupOtp = async ({ email, otp }) => {
+    const response = await authService.verifySignupOtp({ email, otp });
+    const { user: userPayload, accessToken } = response?.data || {};
+    if (accessToken) {
+      localStorage.setItem('accessToken', accessToken);
+    }
+    if (userPayload) {
+      setUser(userPayload);
+    }
+    return response;
   };
 
   const logout = async () => {
@@ -67,7 +84,9 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     login,
+    verifyLoginOtp,
     register,
+    verifySignupOtp,
     logout,
     updateUser,
     isAuthenticated: !!user,

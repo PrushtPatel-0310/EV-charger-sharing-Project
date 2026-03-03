@@ -11,7 +11,7 @@ import {
   checkAvailability,
   disableCharger,
 } from '../controllers/charger.controller.js';
-import { authenticate } from '../middleware/auth.middleware.js';
+import { authenticate, authenticateOptional } from '../middleware/auth.middleware.js';
 import { isOwner } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
 
@@ -34,8 +34,8 @@ const chargerValidation = [
 ];
 
 // Public routes
-router.get('/', getAllChargers);
-router.get('/search', searchChargers);
+router.get('/', authenticateOptional, getAllChargers);
+router.get('/search', authenticateOptional, searchChargers);
 // Protected list of owner's chargers must be declared before the dynamic :id route
 router.get('/my-chargers', authenticate, isOwner, getMyChargers);
 router.get('/:id', getChargerById);

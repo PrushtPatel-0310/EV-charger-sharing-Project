@@ -30,6 +30,32 @@ export const authenticate = async (req, res, next) => {
   }
 };
 
+export const authenticateOptional = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return next();
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = verifyToken(token);
+
+    if (!decoded?.userId) {
+      return next();
+    }
+
+    const user = await User.findById(decoded.userId).select('-password -refreshToken');
+    if (user) {
+      req.user = user;
+    }
+
+    next();
+  } catch (error) {
+    next();
+  }
+};
+
 export const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {

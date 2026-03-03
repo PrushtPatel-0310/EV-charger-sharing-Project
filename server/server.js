@@ -13,6 +13,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import connectDB from './config/database.js';
 import { logger } from './utils/logger.js';
+import { verifyEmailTransporter } from './utils/email.js';
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 import authRoutes from './routes/auth.routes.js';
 import chargerRoutes from './routes/charger.routes.js';
@@ -20,6 +21,8 @@ import bookingRoutes from './routes/booking.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 import reviewRoutes from './routes/review.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
+import walletPaymentRoutes from './routes/paymentRoutes.js';
+import walletRoutes from './routes/wallet.routes.js';
 import aiRoutes from './routes/ai.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import Booking from './models/Booking.js';
@@ -35,6 +38,11 @@ console.log("ENV CHECK:", {
 });
 // Connect to database
 connectDB();
+
+// Verify email transport early to surface credential issues
+verifyEmailTransporter().catch((err) => {
+  console.error('Email transport not ready:', err.message);
+});
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -90,6 +98,8 @@ app.use('/api/v1/chats', chatRoutes);
 app.use('/api/v1/chargers/:chargerId/slots', slotRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/payments', paymentRoutes);
+app.use(['/api/payment', '/api/v1/payment'], walletPaymentRoutes);
+app.use('/api/v1/wallet', walletRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/upload', uploadRoutes);
 
@@ -104,24 +114,24 @@ httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 });
 
-// Auto-checkout bookings whose slots have ended
+// Auto-complete bookings whose slots have ended
 const AUTO_CHECK_INTERVAL_MS = 60 * 1000;
 
-const autoCheckoutExpiredBookings = async () => {
+const autoCompleteExpiredBookings = async () => {
   try {
     const now = new Date();
     const result = await Booking.updateMany(
-      { status: 'active', endTime: { $lt: now } },
-      { status: 'completed', checkOutTime: now }
+      { status: { $in: ['confirmed', 'active'] }, endTime: { $lte: now } },
+      { $set: { status: 'completed' } }
     );
 
     if (result.modifiedCount > 0) {
-      console.log(`Auto-checkout: completed ${result.modifiedCount} expired booking(s)`);
+      console.log(`Auto-complete: completed ${result.modifiedCount} expired booking(s)`);
     }
   } catch (err) {
-    console.error('Auto-checkout error:', err.message);
+    console.error('Auto-complete error:', err.message);
   }
 };
 
-setInterval(autoCheckoutExpiredBookings, AUTO_CHECK_INTERVAL_MS);
+setInterval(autoCompleteExpiredBookings, AUTO_CHECK_INTERVAL_MS);
 

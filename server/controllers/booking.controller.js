@@ -4,16 +4,32 @@ import Booking from '../models/Booking.js';
 import Charger from '../models/Charger.js';
 import DisableWindow from '../models/DisableWindow.js';
 import Payment from '../models/Payment.js';
+import Transaction from '../models/Transaction.js';
 import User from '../models/User.js';
-import { NotFoundError, ForbiddenError, ValidationError, ConflictError } from '../utils/errors.js';
+import { NotFoundError, ForbiddenError, ValidationError, ConflictError, BadRequestError } from '../utils/errors.js';
 import { upgradeChatToBooked } from '../services/chat.service.js';
+import { sendNotificationEmail, EMAIL_TYPES } from '../utils/emailService.js';
 
 const SLOT_INTERVAL_MINUTES = 30;
 const MAX_SLOTS_PER_BOOKING = 4; // 4 x 30 minutes = 2 hours
 const MAX_ADVANCE_DAYS = 60; // ~2 months
 const ACTIVE_BOOKING_STATUSES = ['pending', 'confirmed', 'active'];
+const AUTO_COMPLETE_STATUSES = ['confirmed', 'active'];
 
 const getChargerTimezone = (charger) => charger.availabilityTemplate?.timezone || 'UTC';
+
+const markExpiredBookingsCompleted = async (filters = {}) => {
+  await Booking.updateMany(
+    {
+      ...filters,
+      status: { $in: AUTO_COMPLETE_STATUSES },
+      endTime: { $lte: new Date() },
+    },
+    {
+      $set: { status: 'completed' },
+    }
+  );
+};
 
 const isAlignedToInterval = (dateTime) =>
   dateTime.minute % SLOT_INTERVAL_MINUTES === 0 && dateTime.second === 0 && dateTime.millisecond === 0;
@@ -179,6 +195,30 @@ export const createBooking = async (req, res, next) => {
       },
     ], { session });
 
+    const transactionDescription = `Booking ${booking._id.toString()} wallet payment`;
+    const transactionDate = new Date();
+
+    await Transaction.insertMany([
+      {
+        user: renter._id,
+        amount: totalPrice,
+        type: 'DEBIT',
+        category: 'Booking',
+        status: 'Success',
+        description: transactionDescription,
+        createdAt: transactionDate,
+      },
+      {
+        user: owner._id,
+        amount: totalPrice,
+        type: 'CREDIT',
+        category: 'Booking',
+        status: 'Success',
+        description: transactionDescription,
+        createdAt: transactionDate,
+      },
+    ], { session, ordered: true });
+
     const [payment] = await Payment.create([
       {
         booking: booking._id,
@@ -211,6 +251,30 @@ export const createBooking = async (req, res, next) => {
       console.error('Chat upgrade error:', chatError.message);
     }
 
+    // Fire-and-forget booking confirmation emails
+    Promise.all([
+      sendNotificationEmail(renter.email, EMAIL_TYPES.BOOKING_CONFIRMED_RENTER, {
+        bookingId: booking._id,
+        chargerTitle: charger.title,
+        location: charger.location,
+        startTime: startUtc,
+        endTime: endUtc,
+        price: totalPrice,
+        renterName: renter.name,
+        hostName: owner.name,
+      }),
+      sendNotificationEmail(owner.email, EMAIL_TYPES.BOOKING_CONFIRMED_HOST, {
+        bookingId: booking._id,
+        chargerTitle: charger.title,
+        location: charger.location,
+        startTime: startUtc,
+        endTime: endUtc,
+        price: totalPrice,
+        renterName: renter.name,
+        hostName: owner.name,
+      }),
+    ]).catch((emailErr) => console.error('Booking confirmation email error:', emailErr.message));
+
     const populatedBooking = await Booking.findById(booking._id)
       .populate('charger', 'title location pricePerHour availabilityTemplate')
       .populate('slot')
@@ -232,6 +296,10 @@ export const createBooking = async (req, res, next) => {
 export const getBookings = async (req, res, next) => {
   try {
     const { status, type = 'all' } = req.query;
+    await markExpiredBookingsCompleted({
+      $or: [{ renter: req.user._id }, { owner: req.user._id }],
+    });
+
     const query = {};
 
     if (type === 'upcoming') {
@@ -241,6 +309,8 @@ export const getBookings = async (req, res, next) => {
     } else if (type === 'past') {
       query.renter = req.user._id;
       query.endTime = { $lt: new Date() };
+    } else if (type === 'bookings') {
+      query.renter = req.user._id;
     } else if (type === 'rentals') {
       query.owner = req.user._id;
     } else {
@@ -255,7 +325,7 @@ export const getBookings = async (req, res, next) => {
     }
 
     const bookings = await Booking.find(query)
-      .populate('charger', 'title location images pricePerHour')
+      .populate('charger', 'title location images pricePerHour availabilityTemplate.timezone')
       .populate('renter', 'name email avatar')
       .populate('owner', 'name email avatar')
       .sort({ startTime: -1 });
@@ -288,6 +358,11 @@ export const getBookingById = async (req, res, next) => {
       throw new ForbiddenError('You can only view your own bookings');
     }
 
+    if (AUTO_COMPLETE_STATUSES.includes(booking.status) && new Date(booking.endTime) <= new Date()) {
+      booking.status = 'completed';
+      await booking.save();
+    }
+
     res.json({
       success: true,
       data: { booking },
@@ -318,6 +393,10 @@ export const cancelBooking = async (req, res, next) => {
       booking.owner._id.toString() !== req.user._id.toString()
     ) {
       throw new ForbiddenError('You can only cancel your own bookings');
+    }
+
+    if (new Date() > new Date(booking.endTime)) {
+      throw new BadRequestError('Cannot cancel booking after slot end time');
     }
 
     if (['cancelled', 'completed'].includes(booking.status)) {
@@ -366,11 +445,84 @@ export const cancelBooking = async (req, res, next) => {
 
       await owner.save({ session });
       await renter.save({ session });
+
+      const refundDescription = `Refund for booking ${booking._id.toString()} cancellation`;
+      const refundDate = new Date();
+
+      await Transaction.insertMany(
+        [
+          {
+            user: owner._id,
+            amount: refundAmount,
+            type: 'DEBIT',
+            category: 'Refund',
+            status: 'Success',
+            description: refundDescription,
+            createdAt: refundDate,
+          },
+          {
+            user: renter._id,
+            amount: refundAmount,
+            type: 'CREDIT',
+            category: 'Refund',
+            status: 'Success',
+            description: refundDescription,
+            createdAt: refundDate,
+          },
+        ],
+        { session, ordered: true }
+      );
     }
 
     await booking.save({ session });
 
     await session.commitTransaction();
+
+    const cancelledByRenter = booking.renter._id.toString() === req.user._id.toString();
+    const cancelledByOwner = booking.owner._id.toString() === req.user._id.toString();
+
+    Promise.all([
+      cancelledByRenter
+        ? sendNotificationEmail(booking.renter.email, EMAIL_TYPES.BOOKING_CANCELLED_BY_RENTER_RENTER, {
+            bookingId: booking._id,
+            chargerTitle: booking.charger.title,
+            location: booking.charger.location,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            price: booking.totalPrice,
+            renterName: booking.renter.name,
+            hostName: booking.owner.name,
+            status: booking.paymentStatus,
+          })
+        : null,
+      cancelledByRenter
+        ? sendNotificationEmail(booking.owner.email, EMAIL_TYPES.BOOKING_CANCELLED_BY_RENTER_HOST, {
+            bookingId: booking._id,
+            chargerTitle: booking.charger.title,
+            location: booking.charger.location,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            price: booking.totalPrice,
+            renterName: booking.renter.name,
+            hostName: booking.owner.name,
+            status: booking.paymentStatus,
+          })
+        : null,
+      cancelledByOwner
+        ? sendNotificationEmail(booking.renter.email, EMAIL_TYPES.BOOKING_CANCELLED_BY_HOST_RENTER, {
+            bookingId: booking._id,
+            chargerTitle: booking.charger.title,
+            location: booking.charger.location,
+            startTime: booking.startTime,
+            endTime: booking.endTime,
+            price: booking.totalPrice,
+            renterName: booking.renter.name,
+            hostName: booking.owner.name,
+            refundAmount,
+            status: booking.paymentStatus,
+          })
+        : null,
+    ]).catch((emailErr) => console.error('Cancellation email error:', emailErr.message));
 
     res.json({
       success: true,
@@ -395,6 +547,12 @@ export const checkIn = async (req, res, next) => {
 
     if (booking.renter.toString() !== req.user._id.toString()) {
       throw new ForbiddenError('Only the renter can check in');
+    }
+
+    if (AUTO_COMPLETE_STATUSES.includes(booking.status) && new Date(booking.endTime) <= new Date()) {
+      booking.status = 'completed';
+      await booking.save();
+      throw new ValidationError('Booking slot has ended and is marked as completed');
     }
 
     if (booking.status !== 'confirmed') {
@@ -476,12 +634,16 @@ export const checkOut = async (req, res, next) => {
 
 export const getUpcomingBookings = async (req, res, next) => {
   try {
+    await markExpiredBookingsCompleted({
+      $or: [{ renter: req.user._id }, { owner: req.user._id }],
+    });
+
     const bookings = await Booking.find({
       renter: req.user._id,
       startTime: { $gte: new Date() },
       status: { $ne: 'cancelled' },
     })
-      .populate('charger', 'title location images')
+      .populate('charger', 'title location images availabilityTemplate.timezone')
       .populate('owner', 'name email')
       .sort({ startTime: 1 });
 
@@ -496,11 +658,15 @@ export const getUpcomingBookings = async (req, res, next) => {
 
 export const getPastBookings = async (req, res, next) => {
   try {
+    await markExpiredBookingsCompleted({
+      $or: [{ renter: req.user._id }, { owner: req.user._id }],
+    });
+
     const bookings = await Booking.find({
       renter: req.user._id,
       endTime: { $lt: new Date() },
     })
-      .populate('charger', 'title location images')
+      .populate('charger', 'title location images availabilityTemplate.timezone')
       .populate('owner', 'name email')
       .sort({ endTime: -1 });
 
@@ -515,10 +681,14 @@ export const getPastBookings = async (req, res, next) => {
 
 export const getMyRentals = async (req, res, next) => {
   try {
+    await markExpiredBookingsCompleted({
+      $or: [{ renter: req.user._id }, { owner: req.user._id }],
+    });
+
     const bookings = await Booking.find({
       owner: req.user._id,
     })
-      .populate('charger', 'title location images')
+      .populate('charger', 'title location images availabilityTemplate.timezone')
       .populate('renter', 'name email avatar')
       .sort({ startTime: -1 });
 

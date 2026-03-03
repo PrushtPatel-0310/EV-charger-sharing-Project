@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
-import Dashboard from './pages/Dashboard.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
 import ChargerList from './pages/ChargerList.jsx';
 import ChargerDetail from './pages/ChargerDetail.jsx';
 import Booking from './pages/Booking.jsx';
@@ -13,6 +13,10 @@ import CreateCharger from './pages/CreateCharger.jsx';
 import Profile from './pages/Profile.jsx';
 import Layout from './components/layout/Layout.jsx';
 import Chat from './pages/Chat.jsx';
+import Wallet from './pages/Wallet.jsx';
+import TransactionHistory from './pages/TransactionHistory.jsx';
+import PlanRoute from './pages/PlanRoute.jsx';
+import SearchLocation from './pages/SearchLocation.jsx';
 
 const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -35,16 +39,11 @@ function AppRoutes() {
         <Route index element={<Home />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
+        <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="chargers" element={<ChargerList />} />
+        <Route path="plan-route" element={<PlanRoute />} />
+        <Route path="search-location" element={<SearchLocation />} />
         <Route path="chargers/:id" element={<ChargerDetail />} />
-        <Route
-          path="dashboard"
-          element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
-          }
-        />
         <Route
           path="bookings/:id"
           element={
@@ -82,6 +81,22 @@ function AppRoutes() {
           element={
             <PrivateRoute>
               <Profile />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="wallet"
+          element={
+            <PrivateRoute>
+              <Wallet />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="wallet/history"
+          element={
+            <PrivateRoute>
+              <TransactionHistory />
             </PrivateRoute>
           }
         />

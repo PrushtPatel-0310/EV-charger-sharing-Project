@@ -7,7 +7,7 @@ const DEFAULT_CENTER = { lat: 23.0225, lng: 72.5714 }; // Ahmedabad default
 
 const emojiIcon = (emoji, bg = '#0f172a') =>
   L.divIcon({
-    html: `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:${bg};color:#fff;font-size:16px;">${emoji}</div>`,
+    html: `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:${bg};color:#fff;font-size:16px;box-shadow:0 8px 16px rgba(15,23,42,0.2);">${emoji}</div>`,
     className: 'emoji-pin',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
@@ -15,6 +15,13 @@ const emojiIcon = (emoji, bg = '#0f172a') =>
   });
 
 const chargerIcon = emojiIcon('⚡️', '#0ea5e9');
+const activeChargerIcon = L.divIcon({
+  html: '<div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#16a34a;color:#fff;font-size:18px;box-shadow:0 0 0 6px rgba(22,163,74,0.20), 0 10px 20px rgba(22,163,74,0.30);transform:translateY(-2px);">⚡️</div>',
+  className: 'emoji-pin-active',
+  iconSize: [36, 36],
+  iconAnchor: [18, 34],
+  popupAnchor: [0, -30],
+});
 const startIcon = emojiIcon('🚗', '#16a34a');
 const endIcon = emojiIcon('📍', '#ef4444');
 
@@ -30,6 +37,10 @@ const Map = ({
   corridorRadiusKm, // optional radius overlay
 }) => {
   const [activeId, setActiveId] = useState(null);
+
+  useEffect(() => {
+    setActiveId(selectedChargerId || null);
+  }, [selectedChargerId]);
 
   const resolvedCenter = useMemo(() => {
     if (Array.isArray(center) && center.length === 2 && !isNaN(center[0]) && !isNaN(center[1])) {
@@ -115,7 +126,7 @@ const Map = ({
               key={charger._id}
               position={pos}
               eventHandlers={{ click: () => handleMarkerClick(charger._id) }}
-              icon={chargerIcon}
+              icon={isSelected ? activeChargerIcon : chargerIcon}
             >
               <Popup>
                 <div className="text-sm">

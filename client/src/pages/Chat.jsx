@@ -207,7 +207,7 @@ const Chat = () => {
         <div className="flex flex-col gap-3 border-b border-emerald-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Chats</h1>
-            <p className="text-sm text-emerald-700">Stay on EVCharge. No phone or email sharing.</p>
+            <p className="text-sm text-emerald-700">Stay on ChargeMate.in. No phone or email sharing.</p>
           </div>
           {creatingChat && <span className="text-sm font-semibold text-emerald-600">Creating chat...</span>}
         </div>

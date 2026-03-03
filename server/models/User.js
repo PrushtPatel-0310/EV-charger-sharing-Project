@@ -15,6 +15,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
     },
+    pendingEmail: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
+    },
     password: {
       type: String,
       required: [true, 'Password is required'],
@@ -32,8 +38,13 @@ const userSchema = new mongoose.Schema(
     },
     walletBalance: {
       type: Number,
-      default: 1000,
+      default: 0,
       min: [0, 'Wallet balance cannot be negative'],
+    },
+    processedStripeSessions: {
+      type: [String],
+      default: [],
+      select: false,
     },
     avatar: {
       type: String,
@@ -73,6 +84,58 @@ const userSchema = new mongoose.Schema(
     },
     refreshToken: {
       type: String,
+      select: false,
+    },
+    resetOtp: {
+      type: String,
+      select: false,
+    },
+    resetOtpExpires: {
+      type: Date,
+      select: false,
+    },
+    emailChangeOtp: {
+      type: String,
+      select: false,
+    },
+    emailChangeOtpExpires: {
+      type: Date,
+      select: false,
+    },
+    signupOtp: {
+      type: String,
+      select: false,
+    },
+    signupOtpExpires: {
+      type: Date,
+      select: false,
+    },
+    loginOtp: {
+      type: String,
+      select: false,
+    },
+    loginOtpExpires: {
+      type: Date,
+      select: false,
+    },
+    passwordChangeOtp: {
+      type: String,
+      select: false,
+    },
+    passwordChangeOtpExpires: {
+      type: Date,
+      select: false,
+    },
+    profileUpdateOtp: {
+      type: String,
+      select: false,
+    },
+    profileUpdateOtpExpires: {
+      type: Date,
+      select: false,
+    },
+    pendingProfileUpdate: {
+      type: mongoose.Schema.Types.Mixed,
       select: false,
     },
   },
