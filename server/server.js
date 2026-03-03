@@ -48,7 +48,28 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // CORS configuration (must be before other middleware)
-const corsOptions = { origin: 'https://chargemate-pcf5040ju-prushtpatel2-8642s-projects.vercel.app',
+const allowedOrigins = [
+  ...(process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://chargematein.vercel.app',
+];
+
+const corsOptions = { origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    const isAllowedOrigin = allowedOrigins.includes(origin);
+    const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+
+    if (isAllowedOrigin || isVercelPreview) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],

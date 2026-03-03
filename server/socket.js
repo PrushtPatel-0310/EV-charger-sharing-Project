@@ -3,8 +3,29 @@ import { verifyToken } from './config/jwt.js';
 
 let io;
 
+const allowedOrigins = [
+  ...(process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://chargematein.vercel.app',
+];
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    const isAllowedOrigin = allowedOrigins.includes(origin);
+    const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+
+    if (isAllowedOrigin || isVercelPreview) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Socket CORS blocked for origin: ${origin}`));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   credentials: true,
 };
