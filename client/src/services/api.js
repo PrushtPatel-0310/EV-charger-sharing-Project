@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../utils/constants.js';
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -41,9 +42,23 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config || {};
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.code === 'ECONNABORTED') {
+      error.userMessage = 'Server is taking too long to respond. Please try again.';
+      return Promise.reject(error);
+    }
+
+    if (!error.response) {
+      error.userMessage = 'Unable to reach server. Please check your internet and backend server.';
+      return Promise.reject(error);
+    }
+
+    const requestUrl = String(originalRequest.url || '');
+    const isAuthRequest = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register') || requestUrl.includes('/auth/forgot-password') || requestUrl.includes('/auth/reset-password') || requestUrl.includes('/auth/refresh');
+    const hasAccessToken = !!localStorage.getItem('accessToken');
+
+    if (error.response?.status === 401 && !originalRequest._retry && hasAccessToken && !isAuthRequest) {
       originalRequest._retry = true;
 
       try {

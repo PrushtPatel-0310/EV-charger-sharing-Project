@@ -29,9 +29,9 @@ export const register = async (req, res, next) => {
     user.signupOtp = otp;
     user.signupOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
-
+console.log("OTP saved")
     await sendOtpEmail({ to: email, otp, purpose: 'Signup' });
-
+console.log("Email sent")
     res.status(201).json({
       success: true,
       message: 'Signup OTP sent to email. Please verify to complete registration.',
@@ -66,9 +66,9 @@ export const login = async (req, res, next) => {
     user.loginOtp = otp;
     user.loginOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
-
+console.log("OTP saved")
     await sendOtpEmail({ to: email, otp, purpose: 'Login' });
-
+console.log("email sent")
     res.json({
       success: true,
       message: 'OTP sent to email. Please verify to complete login.',

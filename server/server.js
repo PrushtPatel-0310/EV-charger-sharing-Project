@@ -45,6 +45,7 @@ verifyEmailTransporter().catch((err) => {
 });
 
 const app = express();
+app.set('trust proxy', 1); // required for Render / Vercel / proxies
 const PORT = process.env.PORT || 5001;
 
 // CORS configuration (must be before other middleware)

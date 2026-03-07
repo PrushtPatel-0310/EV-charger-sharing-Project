@@ -1,23 +1,29 @@
 import nodemailer from 'nodemailer';
 
-const assertEmailEnv = () => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+const hasEmailEnv = () => !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+
+const getTransporter = () => {
+  if (!hasEmailEnv()) {
     throw new Error('Email credentials are missing. Set EMAIL_USER and EMAIL_PASS.');
   }
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 };
-
-assertEmailEnv();
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
 
 export const verifyEmailTransporter = async () => {
   try {
+    if (!hasEmailEnv()) {
+      console.warn('Email transporter not configured: EMAIL_USER/EMAIL_PASS missing');
+      return;
+    }
+
+    const transporter = getTransporter();
     await transporter.verify();
     if (process.env.NODE_ENV !== 'production') {
       console.log('Email transporter verified and ready');
@@ -30,6 +36,7 @@ export const verifyEmailTransporter = async () => {
 
 export const sendEmail = async ({ to, subject, text, html }) => {
   const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const transporter = getTransporter();
 
   await transporter.sendMail({
     from,
