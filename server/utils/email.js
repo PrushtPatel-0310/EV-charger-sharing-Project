@@ -1,61 +1,54 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-const hasEmailEnv = () => !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+const hasEmailEnv = () => !!process.env.RESEND_API_KEY;
 
-const getTransporter = () => {
+const getResendClient = () => {
   if (!hasEmailEnv()) {
-    throw new Error('Email credentials are missing. Set EMAIL_USER and EMAIL_PASS.');
+    throw new Error('Email provider credentials are missing. Set RESEND_API_KEY.');
   }
 
-  // return nodemailer.createTransport({
-  //   service: 'gmail',
-  //   auth: {
-  //     user: process.env.EMAIL_USER,
-  //     pass: process.env.EMAIL_PASS,
-  //   },
-  // });
-  return nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // TLS
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  connectionTimeout: 30000,
-  greetingTimeout: 30000,
-});
+  return new Resend(process.env.RESEND_API_KEY);
 };
 
 export const verifyEmailTransporter = async () => {
   try {
     if (!hasEmailEnv()) {
-      console.warn('Email transporter not configured: EMAIL_USER/EMAIL_PASS missing');
+      console.warn('Email provider not configured: RESEND_API_KEY missing');
       return;
     }
 
-    const transporter = getTransporter();
-    await transporter.verify();
+    if (!process.env.EMAIL_FROM) {
+      console.warn('Email sender not configured: EMAIL_FROM missing');
+      return;
+    }
+
     if (process.env.NODE_ENV !== 'production') {
-      console.log('Email transporter verified and ready');
+      console.log('Resend email provider configured and ready');
     }
   } catch (err) {
-    console.error('Email transporter verification failed:', err.message);
+    console.error('Email provider verification failed:', err.message);
     throw err;
   }
 };
 
 export const sendEmail = async ({ to, subject, text, html }) => {
-  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
-  const transporter = getTransporter();
+  if (!process.env.EMAIL_FROM) {
+    throw new Error('EMAIL_FROM is missing. Set EMAIL_FROM to a verified sender email.');
+  }
 
-  await transporter.sendMail({
-    from,
+  const resend = getResendClient();
+
+  const { error } = await resend.emails.send({
+    from: process.env.EMAIL_FROM,
     to,
     subject,
     text,
     html,
   });
+
+  if (error) {
+    throw new Error(`Resend send failed: ${error.message || 'Unknown error'}`);
+  }
 };
 
 export const sendOtpEmail = async ({ to, otp, purpose }) => {
