@@ -24,6 +24,45 @@ const getStripe = () => {
   return stripe;
 };
 
+const normalizeUrl = (value) => {
+  if (!value) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+
+  try {
+    const url = new URL(trimmed);
+    return `${url.origin}${url.pathname === '/' ? '' : url.pathname}`.replace(/\/$/, '');
+  } catch {
+    return null;
+  }
+};
+
+const getFrontendBaseUrl = (req) => {
+  const configuredFrontend = normalizeUrl(process.env.FRONTEND_URL);
+  const configuredClient = normalizeUrl(process.env.CLIENT_URL);
+  const configuredApp = normalizeUrl(process.env.APP_URL);
+  const corsOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((value) => normalizeUrl(value))
+    .filter(Boolean);
+
+  const configuredCandidates = [
+    configuredFrontend,
+    configuredClient,
+    configuredApp,
+    ...corsOrigins,
+  ].filter(Boolean);
+
+  const requestOrigin = normalizeUrl(req.get('origin'));
+  const isTrustedRequestOrigin = requestOrigin && configuredCandidates.includes(requestOrigin);
+
+  if (isTrustedRequestOrigin) {
+    return requestOrigin;
+  }
+
+  return configuredCandidates[0] || 'http://localhost:5173';
+};
+
 const handleValidation = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -44,7 +83,7 @@ router.post(
       const stripeClient = getStripe();
       const amount = Number(req.body.amount);
       const amountInPaise = Math.round(amount * 100);
-      const frontendBaseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const frontendBaseUrl = getFrontendBaseUrl(req);
 
       const session = await stripeClient.checkout.sessions.create({
         mode: 'payment',
