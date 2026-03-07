@@ -60,7 +60,22 @@ const getFrontendBaseUrl = (req) => {
     return requestOrigin;
   }
 
-  return configuredCandidates[0] || 'http://localhost:5173';
+  // If no explicit frontend URL is configured, use request origin as a safe runtime fallback.
+  if (!configuredCandidates.length && requestOrigin) {
+    return requestOrigin;
+  }
+
+  if (configuredCandidates.length) {
+    return configuredCandidates[0];
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    const error = new Error('Frontend URL is not configured. Set FRONTEND_URL or CORS_ORIGINS in backend env.');
+    error.statusCode = 500;
+    throw error;
+  }
+
+  return 'http://localhost:5173';
 };
 
 const handleValidation = (req, res) => {
