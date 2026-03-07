@@ -4,17 +4,32 @@ const FilterBar = ({
   sortBy,
   onSortChange,
   onClear,
+  onClose,
   priceCeiling = 1000,
 }) => {
   const handleChange = (key, value) => {
     onFilterChange((prev) => ({ ...prev, [key]: value }));
   };
 
+  const isPriceFilterActive = filters.maxPrice < priceCeiling;
+
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-      <div className="flex flex-wrap items-end gap-3 overflow-x-auto pb-1">
-        <div className="min-w-[200px] flex-1">
-          <div className="mb-1 text-xs font-semibold text-gray-600">Price Range</div>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-3xl rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-900">Filter Chargers</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <div className="mb-1 text-xs font-semibold text-gray-600">Price Range</div>
           <input
             type="range"
             min={0}
@@ -24,11 +39,13 @@ const FilterBar = ({
             onChange={(event) => handleChange('maxPrice', Number(event.target.value))}
             className="w-full"
           />
-          <div className="mt-1 text-xs text-gray-500">Up to ₹{filters.maxPrice} / kWh</div>
-        </div>
+            <div className="mt-1 text-xs text-gray-500">
+              {isPriceFilterActive ? `Up to ₹${filters.maxPrice} / kWh` : `Max set (₹${priceCeiling}): showing all prices`}
+            </div>
+          </div>
 
-        <div className="min-w-[130px]">
-          <label className="mb-1 block text-xs font-semibold text-gray-600">Distance</label>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gray-600">Distance</label>
           <select
             value={filters.distance}
             onChange={(event) => handleChange('distance', event.target.value)}
@@ -40,10 +57,10 @@ const FilterBar = ({
             <option value="25">Within 25 km</option>
             <option value="50">Within 50 km</option>
           </select>
-        </div>
+          </div>
 
-        <div className="min-w-[150px]">
-          <div className="mb-1 text-xs font-semibold text-gray-600">Charger Type</div>
+          <div>
+            <div className="mb-1 text-xs font-semibold text-gray-600">Charger Type</div>
           <div className="flex rounded-lg border border-gray-300 p-1">
             <button
               type="button"
@@ -73,10 +90,10 @@ const FilterBar = ({
               DC
             </button>
           </div>
-        </div>
+          </div>
 
-        <div className="min-w-[150px]">
-          <label className="mb-1 block text-xs font-semibold text-gray-600">Power Output</label>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gray-600">Power Output</label>
           <select
             value={filters.powerOutput}
             onChange={(event) => handleChange('powerOutput', event.target.value)}
@@ -87,10 +104,10 @@ const FilterBar = ({
             <option value="mid">23-49kW</option>
             <option value="high">50kW+</option>
           </select>
-        </div>
+          </div>
 
-        <div className="min-w-[140px]">
-          <div className="mb-1 text-xs font-semibold text-gray-600">Available Now</div>
+          <div>
+            <div className="mb-1 text-xs font-semibold text-gray-600">Available Now</div>
           <button
             type="button"
             onClick={() => handleChange('availableNow', !filters.availableNow)}
@@ -100,10 +117,10 @@ const FilterBar = ({
           >
             {filters.availableNow ? 'On' : 'Off'}
           </button>
-        </div>
+          </div>
 
-        <div className="min-w-[160px]">
-          <label className="mb-1 block text-xs font-semibold text-gray-600">Sort by</label>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gray-600">Sort by</label>
           <select
             value={sortBy}
             onChange={(event) => onSortChange(event.target.value)}
@@ -114,15 +131,23 @@ const FilterBar = ({
             <option value="fastest">Fastest Charging</option>
             <option value="topRated">Top Rated</option>
           </select>
+          </div>
         </div>
 
-        <div className="min-w-[120px]">
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button
             type="button"
             onClick={onClear}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
           >
             Clear Filters
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+          >
+            Apply Filters
           </button>
         </div>
       </div>

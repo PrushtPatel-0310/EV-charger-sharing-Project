@@ -19,6 +19,7 @@ const ChargerList = () => {
   const [selectedChargerId, setSelectedChargerId] = useState(null);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [sortBy, setSortBy] = useState('nearest');
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 
   const getPrice = (charger) => Number(charger?.pricePerKwh ?? charger?.pricePerHour ?? 0);
   const getDistance = (charger) => {
@@ -62,7 +63,8 @@ const ChargerList = () => {
 
       if (filters.availableNow && charger?.availability?.isAvailable === false) return false;
 
-      if (getPrice(charger) > filters.maxPrice) return false;
+      // If the slider is at max, treat price as "no filter".
+      if (filters.maxPrice < priceCeiling && getPrice(charger) > filters.maxPrice) return false;
 
       if (filters.distance !== 'any' && getDistance(charger) > Number(filters.distance)) return false;
 
@@ -90,10 +92,6 @@ const ChargerList = () => {
     });
   }, [chargers, filters, sortBy, user?._id]);
 
-  useEffect(() => {
-    fetchChargers();
-  }, []);
-
   const fetchChargers = async () => {
     try {
       setLoading(true);
@@ -105,6 +103,10 @@ const ChargerList = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchChargers();
+  }, []);
 
   if (loading && chargers.length === 0) {
     return (
@@ -123,25 +125,31 @@ const ChargerList = () => {
             <h1 className="text-2xl font-bold text-gray-900">{visibleChargers.length} chargers</h1>
           </div>
           <button
-            className="text-sm font-semibold text-primary-600 hover:underline"
-            onClick={fetchChargers}
-            disabled={loading}
+            type="button"
+            onClick={() => setIsFilterPanelOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
           >
-            Refresh
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18l-7 8v5l-4 2v-7L3 5z" />
+            </svg>
+            Filters
           </button>
         </div>
 
-        <FilterBar
-          filters={filters}
-          onFilterChange={setFilters}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          onClear={clearFilters}
-          priceCeiling={priceCeiling}
-        />
+        {isFilterPanelOpen && (
+          <FilterBar
+            filters={filters}
+            onFilterChange={setFilters}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            onClear={clearFilters}
+            onClose={() => setIsFilterPanelOpen(false)}
+            priceCeiling={priceCeiling}
+          />
+        )}
 
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="max-h-[calc(100vh-220px)] overflow-y-auto p-4">
+          <div className="p-4">
             {visibleChargers.length === 0 ? (
               <div className="px-4 py-8 text-center text-gray-500">No chargers found.</div>
             ) : (
