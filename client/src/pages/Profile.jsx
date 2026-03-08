@@ -24,10 +24,28 @@ const getStripeClient = (fallbackPublishableKey = '') => {
 const glassCard =
   'rounded-2xl border border-gray-200/70 bg-white/80 p-5 backdrop-blur-md shadow-sm transition-transform duration-200 hover:shadow-md';
 
+const AVATAR_PREVIEW_SIZE = 224;
+const AVATAR_OUTPUT_SIZE = 600;
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const getCoverDimensions = (width, height, targetSize) => {
+  if (!width || !height) {
+    return { width: targetSize, height: targetSize };
+  }
+
+  const scale = Math.max(targetSize / width, targetSize / height);
+  return {
+    width: width * scale,
+    height: height * scale,
+  };
+};
+
 const Profile = () => {
   const { user, updateUser, logout } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const avatarDragRef = useRef({ active: false, startX: 0, startY: 0, originX: 0, originY: 0 });
 
   const [profileForm, setProfileForm] = useState({
     name: '',
@@ -43,6 +61,11 @@ const Profile = () => {
   const [profileError, setProfileError] = useState('');
   const [saveLoading, setSaveLoading] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [showAvatarActions, setShowAvatarActions] = useState(false);
+  const [showAvatarAdjustModal, setShowAvatarAdjustModal] = useState(false);
+  const [avatarAdjustSrc, setAvatarAdjustSrc] = useState('');
+  const [avatarOffset, setAvatarOffset] = useState({ x: 0, y: 0 });
+  const [avatarNaturalSize, setAvatarNaturalSize] = useState({ width: 0, height: 0 });
 
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [profileOtp, setProfileOtp] = useState('');
@@ -190,17 +213,112 @@ const Profile = () => {
     }));
   };
 
-  const handleAvatarFile = async (file) => {
+  const previewCover = useMemo(
+    () => getCoverDimensions(avatarNaturalSize.width, avatarNaturalSize.height, AVATAR_PREVIEW_SIZE),
+    [avatarNaturalSize]
+  );
+  const maxPanX = Math.max(0, (previewCover.width - AVATAR_PREVIEW_SIZE) / 2);
+  const maxPanY = Math.max(0, (previewCover.height - AVATAR_PREVIEW_SIZE) / 2);
+
+  const buildAdjustedAvatarBlob = (source, offsetX = 0, offsetY = 0) =>
+    new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => {
+        const size = AVATAR_OUTPUT_SIZE;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          reject(new Error('Could not prepare image editor'));
+          return;
+        }
+
+        const cover = getCoverDimensions(image.width, image.height, size);
+        const drawWidth = cover.width;
+        const drawHeight = cover.height;
+        const offsetScale = size / AVATAR_PREVIEW_SIZE;
+        const x = clamp((size - drawWidth) / 2 + offsetX * offsetScale, size - drawWidth, 0);
+        const y = clamp((size - drawHeight) / 2 + offsetY * offsetScale, size - drawHeight, 0);
+
+        ctx.clearRect(0, 0, size, size);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(image, x, y, drawWidth, drawHeight);
+        ctx.restore();
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Failed to generate adjusted image'));
+              return;
+            }
+            resolve(blob);
+          },
+          'image/png',
+          0.95
+        );
+      };
+      image.onerror = () => reject(new Error('Unable to load selected image'));
+      image.src = source;
+    });
+
+  const closeAvatarAdjustModal = () => {
+    setShowAvatarAdjustModal(false);
+    setAvatarAdjustSrc('');
+    setAvatarOffset({ x: 0, y: 0 });
+    setAvatarNaturalSize({ width: 0, height: 0 });
+  };
+
+  const handleAvatarFile = (file) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setProfileError('Please upload a valid image file');
       return;
     }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const source = String(reader.result || '');
+      if (!source) {
+        setProfileError('Could not read selected image');
+        return;
+      }
+
+      const probe = new Image();
+      probe.onload = () => {
+        setAvatarNaturalSize({ width: probe.width, height: probe.height });
+      };
+      probe.src = source;
+
+      setAvatarAdjustSrc(source);
+      setAvatarOffset({ x: 0, y: 0 });
+      setShowAvatarAdjustModal(true);
+      setProfileError('');
+      setProfileMessage('');
+    };
+    reader.onerror = () => setProfileError('Could not read selected image');
+    reader.readAsDataURL(file);
+  };
+
+  const confirmAdjustedAvatar = async () => {
+    if (!avatarAdjustSrc) return;
+
     setUploading(true);
     setProfileMessage('');
     setProfileError('');
+
     try {
-      const res = await uploadService.uploadImages([file]);
+      const adjustedBlob = await buildAdjustedAvatarBlob(avatarAdjustSrc, avatarOffset.x, avatarOffset.y);
+      const adjustedFile = new File([adjustedBlob], `avatar-${Date.now()}.png`, {
+        type: 'image/png',
+      });
+
+      const res = await uploadService.uploadImages([adjustedFile]);
       const url = res.data?.images?.[0];
       if (!url) {
         setProfileError('Upload failed: no URL returned');
@@ -208,11 +326,39 @@ const Profile = () => {
       }
       setProfileForm((prev) => ({ ...prev, avatar: url }));
       setProfileMessage('Photo updated. Save changes to confirm profile update.');
+      closeAvatarAdjustModal();
     } catch (error) {
       setProfileError(error.response?.data?.error?.message || 'Photo upload failed');
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleAvatarDragStart = (event) => {
+    if (!avatarAdjustSrc) return;
+    avatarDragRef.current = {
+      active: true,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: avatarOffset.x,
+      originY: avatarOffset.y,
+    };
+  };
+
+  const handleAvatarDragMove = (event) => {
+    if (!avatarDragRef.current.active) return;
+
+    const nextX = avatarDragRef.current.originX + (event.clientX - avatarDragRef.current.startX);
+    const nextY = avatarDragRef.current.originY + (event.clientY - avatarDragRef.current.startY);
+
+    setAvatarOffset({
+      x: clamp(nextX, -maxPanX, maxPanX),
+      y: clamp(nextY, -maxPanY, maxPanY),
+    });
+  };
+
+  const handleAvatarDragEnd = () => {
+    avatarDragRef.current.active = false;
   };
 
   const removeAvatar = () => {
@@ -441,20 +587,11 @@ const Profile = () => {
 
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => setShowAvatarActions(true)}
                 className="absolute bottom-0 right-0 rounded-full bg-white p-1.5 text-xs text-blue-700 shadow"
                 aria-label="Edit avatar"
               >
                 ✎
-              </button>
-
-              <button
-                type="button"
-                onClick={removeAvatar}
-                className="absolute -right-1 -top-1 rounded-full bg-white p-1.5 text-[10px] text-red-600 shadow"
-                aria-label="Remove photo"
-              >
-                🗑
               </button>
             </div>
 
@@ -469,7 +606,10 @@ const Profile = () => {
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          onChange={(event) => handleAvatarFile(event.target.files?.[0])}
+          onChange={(event) => {
+            handleAvatarFile(event.target.files?.[0]);
+            event.target.value = '';
+          }}
           className="hidden"
         />
       </section>
@@ -714,6 +854,98 @@ const Profile = () => {
           </article>
         </div>
       </div>
+
+      {showAvatarActions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900">Profile Photo</h3>
+            <p className="mt-1 text-sm text-gray-600">Choose what you want to do.</p>
+
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAvatarActions(false);
+                  fileInputRef.current?.click();
+                }}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Change photo
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAvatarActions(false);
+                  removeAvatar();
+                }}
+                className="w-full rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              >
+                Delete photo
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowAvatarActions(false)}
+              className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showAvatarAdjustModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900">Adjust Profile Photo</h3>
+            <p className="mt-1 text-sm text-gray-600">Drag photo to choose center inside the circular frame.</p>
+
+            <div className="mt-4 flex justify-center">
+              <div
+                className="relative h-56 w-56 overflow-hidden rounded-full border-4 border-gray-200 bg-gray-100"
+                onPointerDown={handleAvatarDragStart}
+                onPointerMove={handleAvatarDragMove}
+                onPointerUp={handleAvatarDragEnd}
+                onPointerLeave={handleAvatarDragEnd}
+                style={{ touchAction: 'none', cursor: 'grab' }}
+              >
+                <img
+                  src={avatarAdjustSrc}
+                  alt="Avatar preview"
+                  className="pointer-events-none absolute max-w-none select-none"
+                  draggable={false}
+                  style={{
+                    width: `${previewCover.width}px`,
+                    height: `${previewCover.height}px`,
+                    left: `${(AVATAR_PREVIEW_SIZE - previewCover.width) / 2 + avatarOffset.x}px`,
+                    top: `${(AVATAR_PREVIEW_SIZE - previewCover.height) / 2 + avatarOffset.y}px`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={closeAvatarAdjustModal}
+                className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                disabled={uploading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmAdjustedAvatar}
+                className="w-1/2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-70"
+                disabled={uploading}
+              >
+                {uploading ? 'Uploading...' : 'Use Photo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showOtpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

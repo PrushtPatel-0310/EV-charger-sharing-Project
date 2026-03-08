@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { chargerService } from '../services/chargerService.js';
+import { NeuButton, NeuCard, NeuInput, NeuModal } from '../components/ui/index.js';
 
 const toDateOnlyKey = (value) => {
   const date = new Date(value);
@@ -113,10 +114,10 @@ const MyChargers = () => {
     <>
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">My Chargers</h1>
-          <Link to="/create-charger" className="btn btn-primary">
+          <h1 className="text-3xl font-bold text-primary-900">My Chargers</h1>
+          <NeuButton as={Link} to="/create-charger" variant="primary">
             List Charger
-          </Link>
+          </NeuButton>
         </div>
 
         {chargers.length > 0 ? (
@@ -126,7 +127,7 @@ const MyChargers = () => {
               const isActiveToday = status === 'Active';
 
               return (
-                <div key={charger._id} className="card">
+                <NeuCard key={charger._id} className="soft-enter">
                 <Link
                   to={`/chargers/${charger._id}`}
                   className="text-xl font-semibold text-primary-600 hover:underline mb-2 block"
@@ -159,17 +160,17 @@ const MyChargers = () => {
                     Disable
                   </button>
                 </div>
-                </div>
+                </NeuCard>
               );
             })}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg mb-4">No chargers listed yet</p>
-            <Link to="/create-charger" className="btn btn-primary">
+          <NeuCard className="text-center py-12">
+            <p className="text-primary-700 text-lg mb-4">No chargers listed yet</p>
+            <NeuButton as={Link} to="/create-charger" variant="primary">
               List Your First Charger
-            </Link>
-          </div>
+            </NeuButton>
+          </NeuCard>
         )}
       </div>
 
@@ -186,17 +187,6 @@ const MyChargers = () => {
   );
 };
 
-const Modal = ({ children, onClose }) => (
-  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-    <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
-      <button className="absolute top-3 right-3 text-gray-500" onClick={onClose}>
-        ×
-      </button>
-      {children}
-    </div>
-  </div>
-);
-
 const DisableModalContent = ({ state, tempRange, setTempRange, onClose, onConfirm, submitting }) => {
   if (!state.charger) return null;
 
@@ -204,20 +194,22 @@ const DisableModalContent = ({ state, tempRange, setTempRange, onClose, onConfir
     return (
       <>
         <h3 className="text-xl font-bold mb-4">Disable {state.charger.title}</h3>
-        <p className="text-sm text-gray-600 mb-4">Choose how you want to disable this charger.</p>
+        <p className="text-sm text-primary-700 mb-4">Choose how you want to disable this charger.</p>
         <div className="space-y-2">
-          <button
-            className="btn btn-secondary w-full"
+          <NeuButton
+            variant="secondary"
+            className="w-full"
             onClick={() => state.setStep?.('temporary') || null}
           >
             Disable Temporarily
-          </button>
-          <button
-            className="btn btn-outline w-full"
+          </NeuButton>
+          <NeuButton
+            variant="outline"
+            className="w-full"
             onClick={() => state.setStep?.('permanent') || null}
           >
             Disable Permanently
-          </button>
+          </NeuButton>
         </div>
       </>
     );
@@ -227,14 +219,14 @@ const DisableModalContent = ({ state, tempRange, setTempRange, onClose, onConfir
     return (
       <>
         <h3 className="text-xl font-bold mb-4">Disable Permanently</h3>
-        <p className="text-sm text-gray-700 mb-4">
+        <p className="text-sm text-primary-800 mb-4">
           Are you sure? You will not be able to enable again and will need to list a new charger.
         </p>
         <div className="flex gap-3">
-          <button className="btn w-1/2" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary w-1/2" onClick={onConfirm} disabled={submitting}>
+          <NeuButton className="w-1/2" onClick={onClose}>Cancel</NeuButton>
+          <NeuButton variant="primary" className="w-1/2" onClick={onConfirm} disabled={submitting}>
             {submitting ? 'Disabling...' : 'Confirm'}
-          </button>
+          </NeuButton>
         </div>
       </>
     );
@@ -243,32 +235,32 @@ const DisableModalContent = ({ state, tempRange, setTempRange, onClose, onConfir
   return (
     <>
       <h3 className="text-xl font-bold mb-4">Disable Temporarily</h3>
-      <p className="text-sm text-gray-700 mb-4">Select the start and end dates to disable this charger.</p>
+      <p className="text-sm text-primary-800 mb-4">Select the start and end dates to disable this charger.</p>
       <div className="space-y-3 mb-4">
         <div>
           <label className="block text-sm font-medium mb-1">Start Date</label>
-          <input
+          <NeuInput
             type="date"
-            className="input w-full"
+            className="w-full"
             value={tempRange.startDate}
             onChange={(e) => setTempRange((prev) => ({ ...prev, startDate: e.target.value }))}
           />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">End Date</label>
-          <input
+          <NeuInput
             type="date"
-            className="input w-full"
+            className="w-full"
             value={tempRange.endDate}
             onChange={(e) => setTempRange((prev) => ({ ...prev, endDate: e.target.value }))}
           />
         </div>
       </div>
       <div className="flex gap-3">
-        <button className="btn w-1/2" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary w-1/2" onClick={onConfirm} disabled={submitting}>
+        <NeuButton className="w-1/2" onClick={onClose}>Cancel</NeuButton>
+        <NeuButton variant="primary" className="w-1/2" onClick={onConfirm} disabled={submitting}>
           {submitting ? 'Disabling...' : 'Disable'}
-        </button>
+        </NeuButton>
       </div>
     </>
   );
@@ -283,7 +275,7 @@ const DisableModal = ({ disableModal, setDisableModal, tempRange, setTempRange, 
   };
 
   return (
-    <Modal onClose={onClose}>
+    <NeuModal open={disableModal.open} onClose={onClose}>
       <DisableModalContent
         state={stateWithSetter}
         tempRange={tempRange}
@@ -292,7 +284,7 @@ const DisableModal = ({ disableModal, setDisableModal, tempRange, setTempRange, 
         onConfirm={onConfirm}
         submitting={submitting}
       />
-    </Modal>
+    </NeuModal>
   );
 };
 

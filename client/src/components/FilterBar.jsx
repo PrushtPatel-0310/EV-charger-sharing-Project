@@ -14,14 +14,14 @@ const FilterBar = ({
   const isPriceFilterActive = filters.maxPrice < priceCeiling;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-3xl rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/25 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-3xl rounded-2xl border border-primary-200 bg-primary-100 p-4 shadow-neu soft-enter">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Filter Chargers</h2>
+          <h2 className="text-lg font-bold text-primary-900">Filter Chargers</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="btn px-3 py-1.5 text-xs"
           >
             Close
           </button>
@@ -29,7 +29,7 @@ const FilterBar = ({
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <div className="mb-1 text-xs font-semibold text-gray-600">Price Range</div>
+            <div className="mb-1 text-xs font-semibold text-primary-700">Price Range</div>
           <input
             type="range"
             min={0}
@@ -37,19 +37,19 @@ const FilterBar = ({
             step={5}
             value={filters.maxPrice}
             onChange={(event) => handleChange('maxPrice', Number(event.target.value))}
-            className="w-full"
+            className="w-full accent-primary-500"
           />
-            <div className="mt-1 text-xs text-gray-500">
+            <div className="mt-1 text-xs text-primary-700/80">
               {isPriceFilterActive ? `Up to ₹${filters.maxPrice} / kWh` : `Max set (₹${priceCeiling}): showing all prices`}
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-gray-600">Distance</label>
+            <label className="mb-1 block text-xs font-semibold text-primary-700">Distance</label>
           <select
             value={filters.distance}
             onChange={(event) => handleChange('distance', event.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
+            className="input w-full"
           >
             <option value="any">Any</option>
             <option value="5">Within 5 km</option>
@@ -60,13 +60,13 @@ const FilterBar = ({
           </div>
 
           <div>
-            <div className="mb-1 text-xs font-semibold text-gray-600">Charger Type</div>
-          <div className="flex rounded-lg border border-gray-300 p-1">
+            <div className="mb-1 text-xs font-semibold text-primary-700">Charger Type</div>
+          <div className="flex rounded-xl border border-primary-200 bg-primary-100 p-1 shadow-neu-inset">
             <button
               type="button"
               onClick={() => handleChange('chargerType', 'any')}
               className={`flex-1 rounded-md px-2 py-1 text-xs font-semibold ${
-                filters.chargerType === 'any' ? 'bg-primary-600 text-white' : 'text-gray-600'
+                filters.chargerType === 'any' ? 'bg-primary-500 text-white shadow-neu-sm' : 'text-primary-700'
               }`}
             >
               Any
@@ -75,7 +75,7 @@ const FilterBar = ({
               type="button"
               onClick={() => handleChange('chargerType', 'ac')}
               className={`flex-1 rounded-md px-2 py-1 text-xs font-semibold ${
-                filters.chargerType === 'ac' ? 'bg-primary-600 text-white' : 'text-gray-600'
+                filters.chargerType === 'ac' ? 'bg-primary-500 text-white shadow-neu-sm' : 'text-primary-700'
               }`}
             >
               AC
@@ -84,7 +84,7 @@ const FilterBar = ({
               type="button"
               onClick={() => handleChange('chargerType', 'dc')}
               className={`flex-1 rounded-md px-2 py-1 text-xs font-semibold ${
-                filters.chargerType === 'dc' ? 'bg-primary-600 text-white' : 'text-gray-600'
+                filters.chargerType === 'dc' ? 'bg-primary-500 text-white shadow-neu-sm' : 'text-primary-700'
               }`}
             >
               DC
@@ -93,11 +93,11 @@ const FilterBar = ({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-gray-600">Power Output</label>
+            <label className="mb-1 block text-xs font-semibold text-primary-700">Power Output</label>
           <select
             value={filters.powerOutput}
             onChange={(event) => handleChange('powerOutput', event.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
+            className="input w-full"
           >
             <option value="any">Any</option>
             <option value="low">Up to 22kW</option>
@@ -107,12 +107,12 @@ const FilterBar = ({
           </div>
 
           <div>
-            <div className="mb-1 text-xs font-semibold text-gray-600">Available Now</div>
+            <div className="mb-1 text-xs font-semibold text-primary-700">Available Now</div>
           <button
             type="button"
             onClick={() => handleChange('availableNow', !filters.availableNow)}
             className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-              filters.availableNow ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
+              filters.availableNow ? 'bg-primary-500 text-white shadow-neu-sm' : 'bg-primary-100 text-primary-700 shadow-neu-inset'
             }`}
           >
             {filters.availableNow ? 'On' : 'Off'}
@@ -120,11 +120,11 @@ const FilterBar = ({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-gray-600">Sort by</label>
+            <label className="mb-1 block text-xs font-semibold text-primary-700">Sort by</label>
           <select
             value={sortBy}
             onChange={(event) => onSortChange(event.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
+            className="input w-full"
           >
             <option value="nearest">Nearest</option>
             <option value="cheapest">Cheapest</option>
@@ -138,14 +138,14 @@ const FilterBar = ({
           <button
             type="button"
             onClick={onClear}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+            className="btn btn-outline"
           >
             Clear Filters
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+            className="btn btn-primary"
           >
             Apply Filters
           </button>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { NeuButton, NeuForm, NeuInput } from '../components/ui/index.js';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -48,30 +49,30 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-primary-900">
             Sign in to your account
           </h2>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <NeuForm className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 shadow-neu-sm">
               {error}
             </div>
           )}
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-primary-800">
                 Email address
               </label>
-              <input
+              <NeuInput
                 id="email"
                 name="email"
                 type="email"
                 required
-                className="input mt-1"
+                className="mt-1"
                 value={formData.email}
                 onChange={handleChange}
                 disabled={step === 'otp'}
@@ -80,15 +81,15 @@ const Login = () => {
 
             {step === 'credentials' && (
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="password" className="block text-sm font-medium text-primary-800">
                   Password
                 </label>
-                <input
+                <NeuInput
                   id="password"
                   name="password"
                   type="password"
                   required
-                  className="input mt-1"
+                  className="mt-1"
                   value={formData.password}
                   onChange={handleChange}
                 />
@@ -97,12 +98,12 @@ const Login = () => {
 
             {step === 'otp' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700">OTP</label>
-                <input
+                <label className="block text-sm font-medium text-primary-800">OTP</label>
+                <NeuInput
                   type="text"
                   maxLength={6}
                   required
-                  className="input mt-1"
+                  className="mt-1"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                 />
@@ -111,30 +112,31 @@ const Login = () => {
           </div>
 
           <div>
-            <button
+            <NeuButton
               type="submit"
               disabled={loading}
-              className="btn btn-primary w-full"
+              variant="primary"
+              className="w-full"
             >
               {loading ? 'Processing...' : step === 'credentials' ? 'Send OTP' : 'Verify & Sign in'}
-            </button>
+            </NeuButton>
           </div>
 
-          <div className="flex items-center justify-between text-sm text-gray-600">
+          <div className="flex items-center justify-between text-sm text-primary-700">
             <Link to="/forgot-password" className="text-primary-600 hover:text-primary-700">
               Forgot password?
             </Link>
           </div>
 
           <div className="text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-primary-700">
               Don't have an account?{' '}
               <Link to="/register" className="text-primary-600 hover:text-primary-700">
                 Sign up
               </Link>
             </p>
           </div>
-        </form>
+        </NeuForm>
       </div>
     </div>
   );

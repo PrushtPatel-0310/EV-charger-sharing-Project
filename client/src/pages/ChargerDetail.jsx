@@ -8,6 +8,13 @@ import { reviewService } from '../services/reviewService.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Map from '../components/Map.jsx';
 
+const getExpectedChargeTime = (chargerType) => {
+  if (chargerType === 'Level 1') return '8-12 hours';
+  if (chargerType === 'Level 2') return '2-4 hours';
+  if (chargerType === 'DC Fast') return '20-60 min';
+  return null;
+};
+
 const ChargerDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -43,6 +50,18 @@ const ChargerDetail = () => {
 
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const isSelectedDateToday = selectedDate === todayIso;
+  const expectedChargeTime = getExpectedChargeTime(charger?.chargerType);
+  const imageCount = charger?.images?.length || 0;
+
+  const showPrevImage = () => {
+    if (imageCount <= 1) return;
+    setSelectedImageIndex((prev) => (prev - 1 + imageCount) % imageCount);
+  };
+
+  const showNextImage = () => {
+    if (imageCount <= 1) return;
+    setSelectedImageIndex((prev) => (prev + 1) % imageCount);
+  };
 
   /* ------------------ FETCH CHARGER ------------------ */
   useEffect(() => {
@@ -78,6 +97,14 @@ const ChargerDetail = () => {
 
     loadReviews();
   }, [id]);
+
+  useEffect(() => {
+    if (!imageCount) {
+      setSelectedImageIndex(0);
+      return;
+    }
+    setSelectedImageIndex((prev) => Math.min(prev, imageCount - 1));
+  }, [imageCount]);
 
   /* ------------------ LOAD SLOTS ------------------ */
   useEffect(() => {
@@ -400,13 +427,50 @@ const ChargerDetail = () => {
         {/* LEFT: Images + Map */}
         <div className="space-y-6">
           {/* Image */}
-          <div className="rounded-xl overflow-hidden shadow">
-            {charger.images?.length ? (
-              <img
-                src={charger.images[selectedImageIndex]}
-                alt={charger.title}
-                className="w-full h-80 object-cover"
-              />
+          <div className="relative rounded-xl overflow-hidden shadow">
+            {imageCount ? (
+              <>
+                <img
+                  src={charger.images[selectedImageIndex]}
+                  alt={`${charger.title} image ${selectedImageIndex + 1}`}
+                  className="w-full h-80 object-cover"
+                />
+
+                {imageCount > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={showPrevImage}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 px-3 py-2 text-lg font-bold text-white hover:bg-black/65"
+                      aria-label="Previous image"
+                    >
+                      ‹
+                    </button>
+                    <button
+                      type="button"
+                      onClick={showNextImage}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 px-3 py-2 text-lg font-bold text-white hover:bg-black/65"
+                      aria-label="Next image"
+                    >
+                      ›
+                    </button>
+
+                    <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-2 rounded-full bg-black/35 px-3 py-1.5">
+                      {charger.images.map((_, index) => (
+                        <button
+                          key={`img-dot-${index}`}
+                          type="button"
+                          onClick={() => setSelectedImageIndex(index)}
+                          className={`h-2.5 w-2.5 rounded-full ${
+                            index === selectedImageIndex ? 'bg-white' : 'bg-white/55'
+                          }`}
+                          aria-label={`Go to image ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
             ) : (
               <div className="h-80 bg-gray-200 flex items-center justify-center">
                 No Image
@@ -450,9 +514,18 @@ const ChargerDetail = () => {
 
             <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
               <div><b>Type:</b> {charger.chargerType}</div>
+              <div><b>Expected Full Charge:</b> {expectedChargeTime || 'N/A'}</div>
               <div><b>Connector:</b> {charger.connectorType}</div>
               <div><b>Power:</b> {charger.powerOutput} kW</div>
               <div><b>Price:</b> ₹{charger.pricePerHour}/hour</div>
+              <div className="col-span-2">
+                <b>Full Address:</b>{' '}
+                {charger.location?.address ||
+                  [charger.location?.city, charger.location?.state, charger.location?.country]
+                    .filter(Boolean)
+                    .join(', ') ||
+                  'N/A'}
+              </div>
             </div>
           </div>
 
