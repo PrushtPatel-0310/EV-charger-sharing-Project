@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { bookingService } from '../services/bookingService.js';
 import { chargerService } from '../services/chargerService.js';
-import { NeuButton, NeuCard, NeuWidget } from '../components/ui/index.js';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -45,92 +44,77 @@ const Dashboard = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-2 text-3xl font-bold text-primary-900">Dashboard</h1>
-      <p className="mb-8 text-primary-700">Welcome back, {user?.name}!</p>
-
-      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <NeuWidget>
-          <p className="text-sm font-semibold text-primary-700">Upcoming Bookings</p>
-          <p className="mt-2 text-3xl font-extrabold text-primary-900">{upcomingBookings.length}</p>
-        </NeuWidget>
-        <NeuWidget>
-          <p className="text-sm font-semibold text-primary-700">Listed Chargers</p>
-          <p className="mt-2 text-3xl font-extrabold text-primary-900">{myChargers.length}</p>
-        </NeuWidget>
-        <NeuWidget>
-          <p className="text-sm font-semibold text-primary-700">Account Role</p>
-          <p className="mt-2 text-2xl font-bold capitalize text-primary-900">{user?.role || 'user'}</p>
-        </NeuWidget>
-      </div>
+      <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+      <p className="text-gray-600 mb-8">Welcome back, {user?.name}!</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Upcoming Bookings */}
-        <NeuCard>
-          <h2 className="mb-4 text-xl font-semibold text-primary-900">Upcoming Bookings</h2>
+        <div className="card">
+          <h2 className="text-xl font-semibold mb-4">Upcoming Bookings</h2>
           {upcomingBookings.length > 0 ? (
             <div className="space-y-4">
               {upcomingBookings.slice(0, 3).map((booking) => (
-                <div key={booking._id} className="rounded-xl border border-primary-200 p-3 shadow-neu-sm">
+                <div key={booking._id} className="border-b pb-4">
                   <Link
                     to={`/chargers/${booking.charger._id}`}
-                    className="font-semibold text-primary-700 hover:underline"
+                    className="font-semibold text-primary-600 hover:underline"
                   >
                     {booking.charger.title}
                   </Link>
-                  <p className="text-sm text-primary-700">
+                  <p className="text-sm text-gray-600">
                     {new Date(booking.startTime).toLocaleDateString()} -{' '}
                     {new Date(booking.endTime).toLocaleDateString()}
                   </p>
-                  <p className="text-sm font-semibold text-primary-900">${booking.totalPrice}</p>
+                  <p className="text-sm font-semibold">${booking.totalPrice}</p>
                 </div>
               ))}
-              <Link to="/my-bookings" className="text-sm font-semibold text-primary-700 hover:underline">
+              <Link to="/my-bookings" className="text-primary-600 hover:underline">
                 View all bookings →
               </Link>
             </div>
           ) : (
-            <p className="text-primary-700/80">No upcoming bookings</p>
+            <p className="text-gray-500">No upcoming bookings</p>
           )}
-        </NeuCard>
+        </div>
 
         {/* My Chargers */}
         {(user?.role === 'owner' || user?.role === 'both') && (
-          <NeuCard>
-            <h2 className="mb-4 text-xl font-semibold text-primary-900">My Chargers</h2>
+          <div className="card">
+            <h2 className="text-xl font-semibold mb-4">My Chargers</h2>
             {myChargers.length > 0 ? (
               <div className="space-y-4">
                 {myChargers.slice(0, 3).map((charger) => (
-                  <div key={charger._id} className="rounded-xl border border-primary-200 p-3 shadow-neu-sm">
+                  <div key={charger._id} className="border-b pb-4">
                     <Link
                       to={`/chargers/${charger._id}`}
-                      className="font-semibold text-primary-700 hover:underline"
+                      className="font-semibold text-primary-600 hover:underline"
                     >
                       {charger.title}
                     </Link>
-                    <p className="text-sm text-primary-700">{charger.location.city}</p>
-                    <p className="text-sm font-semibold text-primary-900">${charger.pricePerHour}/hour</p>
+                    <p className="text-sm text-gray-600">{charger.location.city}</p>
+                    <p className="text-sm font-semibold">${charger.pricePerHour}/hour</p>
                   </div>
                 ))}
-                <Link to="/my-chargers" className="text-sm font-semibold text-primary-700 hover:underline">
+                <Link to="/my-chargers" className="text-primary-600 hover:underline">
                   View all chargers →
                 </Link>
               </div>
             ) : (
               <div>
-                <p className="mb-4 text-primary-700/80">No chargers listed yet</p>
-                <NeuButton as={Link} to="/create-charger" variant="primary">
+                <p className="text-gray-500 mb-4">No chargers listed yet</p>
+                <Link to="/create-charger" className="btn btn-primary">
                   List Your Charger
-                </NeuButton>
+                </Link>
               </div>
             )}
-          </NeuCard>
+          </div>
         )}
       </div>
 
       <div className="mt-8">
-        <NeuButton as={Link} to="/chargers" variant="primary">
+        <Link to="/chargers" className="btn btn-primary">
           Browse Chargers
-        </NeuButton>
+        </Link>
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
 import { Outlet, Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { NeuButton, NeuNavbar } from '../ui/index.js';
 
 const Layout = () => {
   const { user, isAuthenticated } = useAuth();
@@ -8,16 +7,19 @@ const Layout = () => {
   const unreadCount = Number(user?.unreadChats || user?.unreadMessages || 0);
   const unreadBadge = unreadCount > 99 ? '99+' : unreadCount;
   const tabClassName = ({ isActive }) =>
-    `rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 ${
-      isActive
-        ? 'bg-primary-200 text-primary-800 shadow-neu-inset'
-        : 'text-primary-700 hover:bg-primary-100 hover:shadow-neu-sm'
+    `border-b-2 pb-1 text-sm font-medium transition-colors ${
+      isActive ? 'border-primary-600 text-primary-700' : 'border-transparent text-gray-700 hover:text-primary-600'
     }`;
 
   return (
-    <div className="min-h-screen flex flex-col text-primary-900">
-      <NeuNavbar title="ChargeMate.in">
-        <div className="flex items-center gap-2 md:gap-3">
+    <div className="min-h-screen flex flex-col">
+      <header className="bg-white shadow-sm">
+        <nav className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <Link to="/" className="text-2xl font-bold text-primary-600">
+              ChargeMate.in
+            </Link>
+            <div className="flex items-center gap-5">
               <NavLink to="/chargers" className={tabClassName}>
                 Browse Chargers
               </NavLink>
@@ -42,13 +44,13 @@ const Layout = () => {
                   <div className="relative ml-1">
                     <Link
                       to="/profile"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-sm font-bold text-primary-800 shadow-neu"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-bold text-primary-700 ring-2 ring-primary-200"
                       aria-label="Profile"
                     >
                       {avatarInitial}
                     </Link>
                     {unreadCount > 0 && (
-                      <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                      <span className="absolute -right-1.5 -top-1.5 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white">
                         {unreadBadge}
                       </span>
                     )}
@@ -59,53 +61,46 @@ const Layout = () => {
                   <NavLink to="/login" className={tabClassName}>
                     Login
                   </NavLink>
-                  <NeuButton as={Link} to="/register" variant="primary">
+                  <Link to="/register" className="btn btn-primary">
                     Sign Up
-                  </NeuButton>
+                  </Link>
                 </>
               )}
             </div>
-      </NeuNavbar>
+          </div>
+        </nav>
+      </header>
 
-      <main className="flex-1 pt-3">
+      <main className="flex-1">
         <Outlet />
       </main>
 
-      <footer className="mt-auto px-4 pb-3 pt-4">
-        <div className="container mx-auto rounded-2xl bg-primary-100 px-5 py-4 shadow-neu">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <footer className="bg-gray-800 text-white py-8 mt-auto">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h3 className="mb-2 text-base font-bold text-primary-800">ChargeMate.in</h3>
-              <p className="text-sm text-primary-700/80">
+              <h3 className="text-lg font-semibold mb-4">ChargeMate.in</h3>
+              <p className="text-gray-400">
                 Connect EV owners with charging stations. Share, discover, and charge.
               </p>
             </div>
             <div>
-              <h3 className="mb-2 text-base font-bold text-primary-800">Quick Links</h3>
-              <ul className="space-y-1 text-sm text-primary-700/80">
-                <li><Link to="/chargers" className="hover:text-primary-900">Browse Chargers</Link></li>
-                <li><Link to="/plan-route" className="hover:text-primary-900">Plan Route</Link></li>
-                <li><Link to="/search-location" className="hover:text-primary-900">Search Location</Link></li>
-                <li><Link to="/register" className="hover:text-primary-900">List Your Charger</Link></li>
+              <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
+              <ul className="space-y-2 text-gray-400">
+                <li><Link to="/chargers" className="hover:text-white">Browse Chargers</Link></li>
+                <li><Link to="/plan-route" className="hover:text-white">Plan Route</Link></li>
+                <li><Link to="/search-location" className="hover:text-white">Search Location</Link></li>
+                <li><Link to="/register" className="hover:text-white">List Your Charger</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="mb-2 text-base font-bold text-primary-800">Contact</h3>
-              <a
-                href="mailto:support@chargemate.in"
-                className="text-sm text-primary-700/80 underline-offset-2 hover:text-primary-900 hover:underline"
-              >
-                support@chargemate.in
-              </a>
+              <h3 className="text-lg font-semibold mb-4">Contact</h3>
+              <p className="text-gray-400">support@chargemate.in</p>
             </div>
           </div>
-          <div className="mt-4 border-t border-primary-200 pt-3 text-center text-xs text-primary-700/80">
+          <div className="mt-8 pt-8 border-t border-gray-700 text-center text-gray-400">
             <p>&copy; 2026 ChargeMate.in. All rights reserved.</p>
           </div>
-        </div>
-
-        <div className="container mx-auto px-4">
-          <p className="py-1 text-center text-[11px] text-primary-700/60">Built for clean EV journeys.</p>
         </div>
       </footer>
     </div>

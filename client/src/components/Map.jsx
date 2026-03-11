@@ -14,7 +14,7 @@ const emojiIcon = (emoji, bg = '#0f172a') =>
     popupAnchor: [0, -28],
   });
 
-const chargerIcon = emojiIcon('⚡️', '#66bb6a');
+const chargerIcon = emojiIcon('⚡️', '#0ea5e9');
 const activeChargerIcon = L.divIcon({
   html: '<div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#16a34a;color:#fff;font-size:18px;box-shadow:0 0 0 6px rgba(22,163,74,0.20), 0 10px 20px rgba(22,163,74,0.30);transform:translateY(-2px);">⚡️</div>',
   className: 'emoji-pin-active',
@@ -88,7 +88,7 @@ const Map = ({
         />
 
         {positions.length > 1 && (
-          <Polyline positions={positions} color="#4ea65a" weight={5} opacity={0.8} />
+          <Polyline positions={positions} color="#2563eb" weight={5} opacity={0.8} />
         )}
 
         {startLocation && (
@@ -108,12 +108,12 @@ const Map = ({
             <Circle
               center={positions[0]}
               radius={Number(corridorRadiusKm) * 1000}
-              pathOptions={{ color: '#4ea65a', fillColor: '#4ea65a', fillOpacity: 0.06 }}
+              pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.05 }}
             />
             <Circle
               center={positions[positions.length - 1]}
               radius={Number(corridorRadiusKm) * 1000}
-              pathOptions={{ color: '#4ea65a', fillColor: '#4ea65a', fillOpacity: 0.06 }}
+              pathOptions={{ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.05 }}
             />
           </>
         )}
@@ -129,11 +129,11 @@ const Map = ({
               icon={isSelected ? activeChargerIcon : chargerIcon}
             >
               <Popup>
-                <div className="text-sm text-primary-900">
+                <div className="text-sm">
                   <h3 className="font-semibold">{charger.title}</h3>
-                  <p className="text-primary-700">{charger.location.address}</p>
+                  <p className="text-gray-600">{charger.location.address}</p>
                   <p className="font-bold text-primary-600">${charger.pricePerHour}/hr</p>
-                  <p className="text-xs text-primary-700/80">{charger.chargerType} • {charger.connectorType}</p>
+                  <p className="text-xs text-gray-500">{charger.chargerType} • {charger.connectorType}</p>
                 </div>
               </Popup>
             </Marker>

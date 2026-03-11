@@ -14,8 +14,6 @@ const MyBookings = () => {
   const [showAll, setShowAll] = useState(false);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [locationFilter, setLocationFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [windowFilter, setWindowFilter] = useState('all');
   const [reviewModal, setReviewModal] = useState({ open: false, booking: null, mode: 'add' });
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
@@ -181,31 +179,21 @@ const MyBookings = () => {
   };
 
   const filteredBookings = useMemo(() => {
-    const now = Date.now();
     const sorted = [...bookings].sort(
       (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
     );
 
     return sorted.filter((booking) => {
       const start = new Date(booking.startTime).getTime();
-      const end = new Date(booking.endTime).getTime();
-      const normalizedStatus = String(booking.status || '').toLowerCase();
       const matchesStart = dateRange.start ? start >= new Date(dateRange.start).getTime() : true;
       const matchesEnd = dateRange.end ? start <= new Date(dateRange.end).getTime() : true;
       const locationText = `${booking.charger?.location?.address || ''} ${booking.charger?.location?.city || ''} ${booking.charger?.location?.state || ''}`.toLowerCase();
       const matchesLocation = locationFilter
         ? locationText.includes(locationFilter.trim().toLowerCase())
         : true;
-      const matchesStatus = statusFilter === 'all' ? true : normalizedStatus === statusFilter;
-      const matchesWindow =
-        windowFilter === 'all'
-          ? true
-          : windowFilter === 'upcoming'
-            ? end >= now
-            : end < now;
-      return matchesStart && matchesEnd && matchesLocation && matchesStatus && matchesWindow;
+      return matchesStart && matchesEnd && matchesLocation;
     });
-  }, [bookings, dateRange, locationFilter, statusFilter, windowFilter]);
+  }, [bookings, dateRange, locationFilter]);
 
   const visibleBookings = useMemo(
     () => (showAll ? filteredBookings : filteredBookings.slice(0, 5)),
@@ -225,7 +213,7 @@ const MyBookings = () => {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">My Bookings</h1>
 
-      <div className="mb-6 grid gap-3 md:grid-cols-5">
+      <div className="mb-6 grid gap-3 md:grid-cols-3">
         <div>
           <label className="text-sm font-semibold text-gray-700">Start date</label>
           <input
@@ -254,31 +242,6 @@ const MyBookings = () => {
             onChange={(e) => setLocationFilter(e.target.value)}
           />
         </div>
-        <div>
-          <label className="text-sm font-semibold text-gray-700">Status</label>
-          <select
-            className="input mt-1 w-full"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All</option>
-            <option value="completed">Completed</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-sm font-semibold text-gray-700">When</label>
-          <select
-            className="input mt-1 w-full"
-            value={windowFilter}
-            onChange={(e) => setWindowFilter(e.target.value)}
-          >
-            <option value="all">All</option>
-            <option value="upcoming">Upcoming</option>
-            <option value="past">Past</option>
-          </select>
-        </div>
       </div>
 
       {error && (
@@ -305,25 +268,12 @@ const MyBookings = () => {
             const review = bookingReviews[booking._id];
             const bookingTimezone = booking.charger?.availabilityTemplate?.timezone || 'UTC';
             return (
-              <div
-                key={booking._id}
-                className="card bg-white cursor-pointer transition-shadow hover:shadow-md"
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(`/bookings/${booking._id}`)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    navigate(`/bookings/${booking._id}`);
-                  }
-                }}
-              >
+              <div key={booking._id} className="card">
                 <div className="flex justify-between items-start">
                   <div>
                     <Link
                       to={`/chargers/${booking.charger._id}`}
                       className="text-xl font-semibold text-primary-600 hover:underline"
-                      onClick={(event) => event.stopPropagation()}
                     >
                       {booking.charger.title}
                     </Link>
@@ -338,10 +288,7 @@ const MyBookings = () => {
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <button
                         className="btn btn-outline text-sm"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleMessageOwner(booking);
-                        }}
+                        onClick={() => handleMessageOwner(booking)}
                         disabled={chatLoadingId === booking._id}
                       >
                         {chatLoadingId === booking._id ? 'Opening chat...' : 'Message owner'}
@@ -352,19 +299,13 @@ const MyBookings = () => {
                           <>
                             <button
                               className="btn btn-outline text-sm"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                openReviewModal(booking, 'edit');
-                              }}
+                              onClick={() => openReviewModal(booking, 'edit')}
                             >
                               Edit Review
                             </button>
                             <button
                               className="btn btn-outline text-sm text-red-600 border-red-200 hover:bg-red-50"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleDeleteReview(booking._id, review._id);
-                              }}
+                              onClick={() => handleDeleteReview(booking._id, review._id)}
                               disabled={deleteReviewLoadingId === booking._id}
                             >
                               {deleteReviewLoadingId === booking._id ? 'Deleting...' : 'Delete Review'}
@@ -373,10 +314,7 @@ const MyBookings = () => {
                         ) : (
                           <button
                             className="btn btn-outline text-sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openReviewModal(booking, 'add');
-                            }}
+                            onClick={() => openReviewModal(booking, 'add')}
                           >
                             Add Review
                           </button>
@@ -390,7 +328,12 @@ const MyBookings = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-primary-600">₹{booking.totalPrice}</p>
-                    <p className="text-sm text-gray-500">Click card for details</p>
+                    <Link
+                      to={`/bookings/${booking._id}`}
+                      className="text-sm text-primary-600 hover:underline"
+                    >
+                      View Details →
+                    </Link>
                   </div>
                 </div>
               </div>

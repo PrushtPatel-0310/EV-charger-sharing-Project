@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Map from '../components/Map.jsx';
 import { chargerService } from '../services/chargerService.js';
@@ -18,48 +18,23 @@ const SearchLocation = () => {
   const [maxPrice, setMaxPrice] = useState('');
   const [center, setCenter] = useState(DEFAULT_CENTER);
 
-  const matchesExtraFilters = (charger) => {
-    const chargerTypeMatches = chargerType ? charger?.chargerType === chargerType : true;
-    const price = Number(charger?.pricePerHour ?? charger?.pricePerKwh ?? 0);
-    const maxPriceMatches = maxPrice !== '' ? price <= Number(maxPrice) : true;
-    return chargerTypeMatches && maxPriceMatches;
-  };
-
   const runGeocode = async (query) => {
     const place = await geocodeService.first(query);
     if (!place) throw new Error('Location not found');
     return { lat: place.lat, lng: place.lng };
   };
 
-  const fetchAllChargers = async () => {
-    try {
-      setSearching(true);
-      setSearchError('');
-      const response = await chargerService.getAll({ page: 1, limit: 200 });
-      const allChargers = response.data?.chargers || [];
-      setChargers(allChargers.filter(matchesExtraFilters));
-      setSelectedChargerId(null);
-    } catch (err) {
-      setSearchError('Unable to load chargers');
-      setChargers([]);
-    } finally {
-      setSearching(false);
-    }
-  };
-
   const handleCitySearch = async (e) => {
     e.preventDefault();
-    const trimmedQuery = searchQuery.trim();
-
-    if (!trimmedQuery) {
-      await fetchAllChargers();
+    if (!searchQuery.trim()) {
+      setSearchError('Enter a city or area');
       return;
     }
 
     try {
       setSearching(true);
       setSearchError('');
-      const place = await runGeocode(trimmedQuery);
+      const place = await runGeocode(searchQuery);
       setCenter({ lat: place.lat, lng: place.lng });
 
       const response = await chargerService.search({
@@ -78,10 +53,6 @@ const SearchLocation = () => {
       setSearching(false);
     }
   };
-
-  useEffect(() => {
-    fetchAllChargers();
-  }, []);
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-4">
@@ -185,7 +156,7 @@ const SearchLocation = () => {
             </div>
             <div className="divide-y divide-gray-100 lg:h-[calc(100%-72px)] lg:overflow-y-auto">
               {chargers.length === 0 ? (
-                <div className="px-4 py-8 text-center text-gray-500">No chargers found for selected filters.</div>
+                <div className="px-4 py-8 text-center text-gray-500">Search a location to view chargers.</div>
               ) : (
                 chargers.map((charger) => {
                   const isActive = selectedChargerId === charger._id;
