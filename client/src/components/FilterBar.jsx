@@ -126,7 +126,6 @@ const FilterBar = ({
             onChange={(event) => onSortChange(event.target.value)}
             className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm"
           >
-            <option value="nearest">Nearest</option>
             <option value="cheapest">Cheapest</option>
             <option value="fastest">Fastest Charging</option>
             <option value="topRated">Top Rated</option>

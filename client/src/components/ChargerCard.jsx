@@ -7,12 +7,16 @@ const ChargerCard = ({ charger, isSelected, onSelect }) => {
     status === 'Available'
       ? 'bg-emerald-50 text-emerald-700'
       : 'bg-red-50 text-red-700';
-  const isFastCharging = charger?.chargerType === 'DC Fast' || Number(charger?.powerOutput) >= 50;
-  const connectorLabel = charger?.connectorType === 'CCS' ? 'CCS2' : charger?.connectorType;
-  const rating = Number(charger?.rating || 0).toFixed(1);
-  const reviewCount = charger?.totalReviews || 0;
+  const ratingValue = Number(charger?.rating || 0);
+  const rating = ratingValue.toFixed(1);
+  const isTopRated = ratingValue > 3.5;
+  const chargerTypeLabel = charger?.chargerType || 'AC';
   const price = Number(charger?.pricePerKwh ?? charger?.pricePerHour ?? 0);
   const priceUnit = charger?.pricePerKwh != null ? 'kWh' : 'hr';
+  const cityName =
+    charger?.location?.city ||
+    charger?.location?.address?.split(',')?.[0]?.trim() ||
+    'Unknown city';
 
   return (
     <div
@@ -32,7 +36,7 @@ const ChargerCard = ({ charger, isSelected, onSelect }) => {
       role="button"
       tabIndex={0}
     >
-      <div className="h-[60%] w-full bg-gray-100">
+      <div className="relative h-[78%] w-full bg-gray-100">
         {charger.images?.length ? (
           <img
             src={charger.images[0]}
@@ -44,42 +48,41 @@ const ChargerCard = ({ charger, isSelected, onSelect }) => {
             No image
           </div>
         )}
+
+        <div
+          className={`absolute right-3 top-3 inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold shadow-sm ${
+            isTopRated
+              ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300'
+              : 'bg-white text-gray-800'
+          }`}
+        >
+          ⭐ {rating}
+        </div>
       </div>
 
-      <div className="flex h-[40%] flex-col p-4">
-        <div className="min-h-0 flex-1 space-y-1">
-          <h3 className="truncate text-lg font-bold text-gray-900">{charger.title}</h3>
-          <p className="truncate text-xs text-gray-500 opacity-80">
-            {charger.location?.address || `${charger.location?.city || ''}, ${charger.location?.state || ''}`}
-          </p>
-          <p className="text-lg font-bold text-green-600">₹{price} / {priceUnit}</p>
-
-          <div className="flex flex-wrap gap-1.5 pt-1">
+      <div className="flex h-[22%] items-center justify-between gap-3 px-3 py-2">
+        <div className="min-w-0">
+          <h3 className="truncate text-base font-bold text-gray-900">{charger.title}</h3>
+          <p className="truncate text-xs text-gray-500">{cityName}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
             <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${statusClasses}`}>
               {status}
             </span>
-            {isFastCharging && (
-              <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                ⚡ Fast Charging
-              </span>
-            )}
-            {connectorLabel && (
-              <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                {connectorLabel}
-              </span>
-            )}
+            <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+              {chargerTypeLabel}
+            </span>
             {charger?.powerOutput != null && (
               <span className="inline-flex rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">
                 {charger.powerOutput}kW
               </span>
             )}
           </div>
-
-          <div className="pt-1 text-xs text-gray-600">
-            ⭐ {rating} <span className="text-gray-500">({reviewCount})</span>
-          </div>
         </div>
 
+        <p className="shrink-0 text-right text-2xl font-extrabold leading-none text-green-600">
+          ₹{price}
+          <span className="block text-[11px] font-semibold text-green-700">/ {priceUnit}</span>
+        </p>
       </div>
     </div>
   );

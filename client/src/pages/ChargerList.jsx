@@ -18,7 +18,7 @@ const ChargerList = () => {
   const [loading, setLoading] = useState(true);
   const [selectedChargerId, setSelectedChargerId] = useState(null);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [sortBy, setSortBy] = useState('nearest');
+  const [sortBy, setSortBy] = useState('cheapest');
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 
   const getPrice = (charger) => Number(charger?.pricePerKwh ?? charger?.pricePerHour ?? 0);
@@ -44,7 +44,7 @@ const ChargerList = () => {
 
   const clearFilters = () => {
     setFilters({ ...DEFAULT_FILTERS, maxPrice: priceCeiling });
-    setSortBy('nearest');
+    setSortBy('cheapest');
   };
 
   const visibleChargers = useMemo(() => {
