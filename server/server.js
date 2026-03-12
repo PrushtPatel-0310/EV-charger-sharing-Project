@@ -23,7 +23,6 @@ import reviewRoutes from './routes/review.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import walletPaymentRoutes from './routes/paymentRoutes.js';
 import walletRoutes from './routes/wallet.routes.js';
-import aiRoutes from './routes/ai.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import Booking from './models/Booking.js';
 import slotRoutes from './routes/slot.routes.js';
@@ -121,7 +120,6 @@ app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use(['/api/payment', '/api/v1/payment'], walletPaymentRoutes);
 app.use('/api/v1/wallet', walletRoutes);
-app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/upload', uploadRoutes);
 
 // Error handling middleware
