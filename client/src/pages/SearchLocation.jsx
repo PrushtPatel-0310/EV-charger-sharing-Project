@@ -110,7 +110,7 @@ const SearchLocation = () => {
             type="number"
             min="0"
             step="0.01"
-            placeholder="Max $/hr (optional)"
+            placeholder="Max ₹/hr (optional)"
             value={maxPrice}
             onChange={(e) => setMaxPrice(e.target.value)}
             className="input rounded-xl border-gray-200 bg-gray-50"

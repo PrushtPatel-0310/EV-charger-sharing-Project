@@ -257,7 +257,7 @@ const PlanRoute = () => {
                       <p className="truncate text-sm text-gray-600">{charger.location?.address || `${charger.location?.city || ''}, ${charger.location?.state || ''}`}</p>
                       <p className="text-xs text-gray-500">{charger.chargerType} • {charger.connectorType}</p>
                     </div>
-                    <p className="text-lg font-bold text-primary-600">${charger.pricePerHour}/hr</p>
+                    <p className="text-lg font-bold text-primary-600">₹{charger.pricePerHour}/hr</p>
                   </div>
                 );
               })

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { useNavigate } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 
 const DEFAULT_CENTER = { lat: 23.0225, lng: 72.5714 }; // Ahmedabad default
@@ -36,6 +37,7 @@ const Map = ({
   endLocation,
   corridorRadiusKm, // optional radius overlay
 }) => {
+  const navigate = useNavigate();
   const [activeId, setActiveId] = useState(null);
 
   useEffect(() => {
@@ -129,10 +131,21 @@ const Map = ({
               icon={isSelected ? activeChargerIcon : chargerIcon}
             >
               <Popup>
-                <div className="text-sm">
+                <div
+                  className="text-sm cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/chargers/${charger._id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigate(`/chargers/${charger._id}`);
+                    }
+                  }}
+                >
                   <h3 className="font-semibold">{charger.title}</h3>
                   <p className="text-gray-600">{charger.location.address}</p>
-                  <p className="font-bold text-primary-600">${charger.pricePerHour}/hr</p>
+                  <p className="font-bold text-primary-600">₹{charger.pricePerHour}/hr</p>
                   <p className="text-xs text-gray-500">{charger.chargerType} • {charger.connectorType}</p>
                 </div>
               </Popup>

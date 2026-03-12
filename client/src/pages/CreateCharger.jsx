@@ -421,7 +421,7 @@ const handleAddressUpdate = ({ displayName, address = {} }) => {
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Price per Hour ($) <span className="text-red-500">*</span>
+                Price per Hour (₹) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -432,7 +432,7 @@ const handleAddressUpdate = ({ displayName, address = {} }) => {
                 className="input"
                 value={formData.pricePerHour}
                 onChange={handleChange}
-                placeholder="e.g., 10.00"
+                placeholder="e.g., 100.00"
               />
             </div>
           </div>
