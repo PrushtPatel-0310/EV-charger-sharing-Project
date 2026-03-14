@@ -75,18 +75,18 @@ const Layout = () => {
         <Outlet />
       </main>
 
-      <footer className="bg-gray-800 text-white py-8 mt-auto">
+      <footer className="bg-gray-800 text-white py-4 mt-auto">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-              <h3 className="text-lg font-semibold mb-4">ChargeMate.in</h3>
+              <h3 className="mb-2 text-lg font-semibold">ChargeMate.in</h3>
               <p className="text-gray-400">
                 Connect EV owners with charging stations. Share, discover, and charge.
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
-              <ul className="space-y-2 text-gray-400">
+              <h3 className="mb-2 text-lg font-semibold">Quick Links</h3>
+              <ul className="space-y-1 text-gray-400">
                 <li><Link to="/chargers" className="hover:text-white">Browse Chargers</Link></li>
                 <li><Link to="/plan-route" className="hover:text-white">Plan Route</Link></li>
                 <li><Link to="/search-location" className="hover:text-white">Search Location</Link></li>
@@ -94,11 +94,11 @@ const Layout = () => {
               </ul>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-4">Contact</h3>
+              <h3 className="mb-2 text-lg font-semibold">Contact</h3>
               <p className="text-gray-400">support@chargemate.in</p>
             </div>
           </div>
-          <div className="mt-8 pt-8 border-t border-gray-700 text-center text-gray-400">
+          <div className="mt-4 border-t border-gray-700 pt-4 text-center text-gray-400">
             <p>&copy; 2026 ChargeMate.in. All rights reserved.</p>
           </div>
         </div>

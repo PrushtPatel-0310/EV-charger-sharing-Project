@@ -1,4 +1,9 @@
-import { sendEmail } from './email.js';
+const sendEmail = async ({ to, subject }) => {
+  // Email delivery is disabled because OTP/resend mail system was removed.
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[EMAIL_DISABLED] Skipping email to ${to} (${subject})`);
+  }
+};
 
 export const EMAIL_TYPES = {
   BOOKING_CONFIRMED_RENTER: 'BOOKING_CONFIRMED_RENTER',

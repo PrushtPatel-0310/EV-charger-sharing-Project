@@ -438,6 +438,10 @@ const ChargerDetail = () => {
           <div className="bg-white rounded-xl shadow p-6">
             <h1 className="text-3xl font-bold">{charger.title}</h1>
             <p className="text-gray-600 mt-2">{charger.description}</p>
+            <p className="mt-3 text-sm text-gray-700 break-words">
+              <span className="font-semibold">Address:</span>{' '}
+              {charger?.location?.address || [charger?.location?.city, charger?.location?.state, charger?.location?.country].filter(Boolean).join(', ') || 'N/A'}
+            </p>
 
             <div className="mt-3 text-sm text-gray-800">
               <span className="font-semibold">Rating:</span>{' '}

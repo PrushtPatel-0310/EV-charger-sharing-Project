@@ -33,16 +33,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (credentials) => {
-    // OTP step 1
-    return authService.loginRequestOtp(credentials);
-  };
-
-  const register = async (userData) => {
-    return authService.registerRequestOtp(userData);
-  };
-
-  const verifyLoginOtp = async ({ email, otp }) => {
-    const response = await authService.verifyLoginOtp({ email, otp });
+    const response = await authService.login(credentials);
     const { user: userPayload, accessToken } = response?.data || {};
     if (accessToken) {
       localStorage.setItem('accessToken', accessToken);
@@ -53,8 +44,8 @@ export const AuthProvider = ({ children }) => {
     return response;
   };
 
-  const verifySignupOtp = async ({ email, otp }) => {
-    const response = await authService.verifySignupOtp({ email, otp });
+  const register = async (userData) => {
+    const response = await authService.register(userData);
     const { user: userPayload, accessToken } = response?.data || {};
     if (accessToken) {
       localStorage.setItem('accessToken', accessToken);
@@ -84,9 +75,7 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     login,
-    verifyLoginOtp,
     register,
-    verifySignupOtp,
     logout,
     updateUser,
     isAuthenticated: !!user,

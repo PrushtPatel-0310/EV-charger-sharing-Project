@@ -55,7 +55,7 @@ api.interceptors.response.use(
     }
 
     const requestUrl = String(originalRequest.url || '');
-    const isAuthRequest = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register') || requestUrl.includes('/auth/forgot-password') || requestUrl.includes('/auth/reset-password') || requestUrl.includes('/auth/refresh');
+    const isAuthRequest = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register') || requestUrl.includes('/auth/refresh');
     const hasAccessToken = !!localStorage.getItem('accessToken');
 
     if (error.response?.status === 401 && !originalRequest._retry && hasAccessToken && !isAuthRequest) {

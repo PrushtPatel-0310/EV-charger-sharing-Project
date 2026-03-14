@@ -3,7 +3,6 @@ import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
-import ForgotPassword from './pages/ForgotPassword.jsx';
 import ChargerList from './pages/ChargerList.jsx';
 import ChargerDetail from './pages/ChargerDetail.jsx';
 import Booking from './pages/Booking.jsx';
@@ -39,7 +38,6 @@ function AppRoutes() {
         <Route index element={<Home />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
-        <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="chargers" element={<ChargerList />} />
         <Route path="plan-route" element={<PlanRoute />} />
         <Route path="search-location" element={<SearchLocation />} />

@@ -10,11 +10,9 @@ const Register = () => {
     phone: '',
     role: 'renter',
   });
-  const [otp, setOtp] = useState('');
-  const [step, setStep] = useState('form');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register, verifySignupOtp } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -30,13 +28,8 @@ const Register = () => {
     setLoading(true);
 
     try {
-      if (step === 'form') {
-        await register(formData);
-        setStep('otp');
-      } else {
-        await verifySignupOtp({ email: formData.email, otp });
-        navigate('/my-bookings');
-      }
+      await register(formData);
+      navigate('/my-bookings');
     } catch (err) {
       console.error('Registration error:', err);
       
@@ -91,7 +84,6 @@ const Register = () => {
                 className="input mt-1"
                 value={formData.name}
                 onChange={handleChange}
-                disabled={step === 'otp'}
               />
             </div>
             <div>
@@ -106,71 +98,54 @@ const Register = () => {
                 className="input mt-1"
                 value={formData.email}
                 onChange={handleChange}
-                disabled={step === 'otp'}
               />
             </div>
-            {step === 'form' && (
-              <>
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                    Phone (optional)
-                  </label>
-                  <input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    className="input mt-1"
-                    value={formData.phone}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    minLength={6}
-                    className="input mt-1"
-                    value={formData.password}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                    I want to
-                  </label>
-                  <select
-                    id="role"
-                    name="role"
-                    className="input mt-1"
-                    value={formData.role}
-                    onChange={handleChange}
-                  >
-                    <option value="renter">Rent chargers</option>
-                    <option value="owner">List my charger</option>
-                    <option value="both">Both</option>
-                  </select>
-                </div>
-              </>
-            )}
-
-            {step === 'otp' && (
+            <>
               <div>
-                <label className="block text-sm font-medium text-gray-700">OTP</label>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                  Phone (optional)
+                </label>
                 <input
-                  type="text"
-                  maxLength={6}
-                  required
+                  id="phone"
+                  name="phone"
+                  type="tel"
                   className="input mt-1"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
+                  value={formData.phone}
+                  onChange={handleChange}
                 />
               </div>
-            )}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  minLength={6}
+                  className="input mt-1"
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                  I want to
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  className="input mt-1"
+                  value={formData.role}
+                  onChange={handleChange}
+                >
+                  <option value="renter">Rent chargers</option>
+                  <option value="owner">List my charger</option>
+                  <option value="both">Both</option>
+                </select>
+              </div>
+            </>
           </div>
 
           <div>
@@ -179,7 +154,7 @@ const Register = () => {
               disabled={loading}
               className="btn btn-primary w-full"
             >
-              {loading ? 'Processing...' : step === 'form' ? 'Send OTP' : 'Verify & Create account'}
+              {loading ? 'Processing...' : 'Create account'}
             </button>
           </div>
 

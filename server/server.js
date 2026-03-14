@@ -13,7 +13,6 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import connectDB from './config/database.js';
 import { logger } from './utils/logger.js';
-import { verifyEmailTransporter } from './utils/email.js';
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 import authRoutes from './routes/auth.routes.js';
 import chargerRoutes from './routes/charger.routes.js';
@@ -37,11 +36,6 @@ console.log("ENV CHECK:", {
 });
 // Connect to database
 connectDB();
-
-// Verify email transport early to surface credential issues
-verifyEmailTransporter().catch((err) => {
-  console.error('Email transport not ready:', err.message);
-});
 
 const app = express();
 app.set('trust proxy', 1); // required for Render / Vercel / proxies

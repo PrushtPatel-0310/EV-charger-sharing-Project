@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { authService } from '../services/authService.js';
+import { chatService } from '../services/chatService.js';
 import { uploadService } from '../services/uploadService.js';
 import { paymentService } from '../services/paymentService.js';
 import { walletService } from '../services/walletService.js';
@@ -24,6 +25,15 @@ const getStripeClient = (fallbackPublishableKey = '') => {
 const glassCard =
   'rounded-2xl border border-gray-200/70 bg-white/80 p-5 backdrop-blur-md shadow-sm transition-transform duration-200 hover:shadow-md';
 
+const formatChatTime = (chat) => {
+  const dateString = chat?.lastMessage?.createdAt || chat?.lastMessage?.at || chat?.updatedAt || chat?.createdAt;
+  if (!dateString) return '';
+  return new Date(dateString).toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+};
+
 const Profile = () => {
   const { user, updateUser, logout } = useAuth();
   const navigate = useNavigate();
@@ -44,21 +54,13 @@ const Profile = () => {
   const [saveLoading, setSaveLoading] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
 
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [profileOtp, setProfileOtp] = useState('');
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpMessage, setOtpMessage] = useState('');
-  const [pendingProfilePayload, setPendingProfilePayload] = useState(null);
-
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
-    otp: '',
     newPassword: '',
     confirmPassword: '',
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState('');
-  const [passwordOtpStatus, setPasswordOtpStatus] = useState('');
   const [showSecurityBox, setShowSecurityBox] = useState(false);
 
   const [showAddMoneyModal, setShowAddMoneyModal] = useState(false);
@@ -78,6 +80,10 @@ const Profile = () => {
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [transactionsError, setTransactionsError] = useState('');
   const [showTransactionsModal, setShowTransactionsModal] = useState(false);
+
+  const [chats, setChats] = useState([]);
+  const [chatsLoading, setChatsLoading] = useState(false);
+  const [chatsError, setChatsError] = useState('');
 
   const avatarInitial = (profileForm.name || user?.name || '?').charAt(0).toUpperCase();
 
@@ -112,6 +118,50 @@ const Profile = () => {
     };
 
     fetchTransactions();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchChats = async () => {
+      try {
+        setChatsLoading(true);
+        setChatsError('');
+        const response = await chatService.list();
+        if (!active) return;
+        const payload = response?.data || response;
+        const combined = [
+          ...(payload?.data?.chats || []),
+          ...(payload?.chats || []),
+          ...(payload?.data?.booked || payload?.booked || []),
+          ...(payload?.data?.enquiries || payload?.enquiries || []),
+        ].filter(Boolean);
+
+        const byId = new Map();
+        combined.forEach((chat) => {
+          if (chat?._id) byId.set(chat._id, chat);
+        });
+
+        const sorted = Array.from(byId.values()).sort((a, b) => {
+          const aTime = new Date(a?.lastMessage?.createdAt || a?.lastMessage?.at || a?.updatedAt || a?.createdAt || 0).getTime();
+          const bTime = new Date(b?.lastMessage?.createdAt || b?.lastMessage?.at || b?.updatedAt || b?.createdAt || 0).getTime();
+          return bTime - aTime;
+        });
+
+        setChats(sorted);
+      } catch (error) {
+        if (!active) return;
+        setChatsError(error?.response?.data?.message || 'Unable to load chats');
+      } finally {
+        if (active) setChatsLoading(false);
+      }
+    };
+
+    fetchChats();
 
     return () => {
       active = false;
@@ -177,6 +227,7 @@ const Profile = () => {
   }, [user?._id, updateUser]);
 
   const recentTransactions = useMemo(() => transactions.slice(0, 3), [transactions]);
+  const recentChats = useMemo(() => chats.slice(0, 4), [chats]);
 
   const handleLogout = async () => {
     await logout();
@@ -221,7 +272,7 @@ const Profile = () => {
     setProfileError('');
   };
 
-  const requestProfileSaveOtp = async (event) => {
+  const saveProfile = async (event) => {
     event.preventDefault();
     setSaveLoading(true);
     setProfileMessage('');
@@ -236,50 +287,17 @@ const Profile = () => {
         email: profileForm.email,
       };
 
-      await authService.requestProfileUpdateOtp(payload);
-      setPendingProfilePayload(payload);
-      setShowOtpModal(true);
-      setOtpMessage('OTP sent. Enter the code to confirm profile changes.');
-      setProfileOtp('');
-    } catch (error) {
-      setProfileError(error?.response?.data?.error?.message || 'Could not start OTP verification');
-    } finally {
-      setSaveLoading(false);
-    }
-  };
-
-  const verifyProfileSaveOtp = async (event) => {
-    event.preventDefault();
-    if (!profileOtp) {
-      setOtpMessage('Enter OTP to continue');
-      return;
-    }
-
-    setOtpLoading(true);
-    setOtpMessage('');
-    try {
-      const res = await authService.verifyProfileUpdateOtp({ otp: profileOtp });
+      const res = await authService.updateProfile(payload);
       const updatedUser = res?.data?.user;
       if (updatedUser) {
         updateUser(updatedUser);
       }
-      setPendingProfilePayload(null);
-      setShowOtpModal(false);
+      setIsEditingAccount(false);
       setProfileMessage('Profile updated successfully');
     } catch (error) {
-      setOtpMessage(error?.response?.data?.error?.message || 'OTP verification failed');
+      setProfileError(error?.response?.data?.error?.message || 'Profile update failed');
     } finally {
-      setOtpLoading(false);
-    }
-  };
-
-  const requestPasswordOtp = async () => {
-    setPasswordOtpStatus('');
-    try {
-      await authService.requestPasswordChangeOtp();
-      setPasswordOtpStatus('OTP sent to your email');
-    } catch (error) {
-      setPasswordOtpStatus(error.response?.data?.error?.message || 'Could not send OTP');
+      setSaveLoading(false);
     }
   };
 
@@ -297,19 +315,14 @@ const Profile = () => {
       return;
     }
 
-    if (!passwordForm.otp) {
-      setPasswordMessage('Enter OTP sent to your email');
-      return;
-    }
-
     setPasswordLoading(true);
     try {
-      await authService.changePasswordWithOtp({
-        otp: passwordForm.otp,
+      await authService.changePassword({
+        currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
       });
       setPasswordMessage('Password updated successfully');
-      setPasswordForm({ currentPassword: '', otp: '', newPassword: '', confirmPassword: '' });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
       setPasswordMessage(error.response?.data?.error?.message || 'Password update failed');
     } finally {
@@ -480,7 +493,7 @@ const Profile = () => {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Account Information</h2>
-                <p className="mt-1 text-sm text-gray-500">Edit profile details and verify with OTP before save.</p>
+                <p className="mt-1 text-sm text-gray-500">Edit profile details and save changes directly.</p>
               </div>
               <button
                 type="button"
@@ -513,7 +526,7 @@ const Profile = () => {
                 <p className="text-sm text-gray-600"><span className="font-semibold text-gray-800">🧩 Role:</span> {profileForm.role || '-'}</p>
               </div>
             ) : (
-              <form onSubmit={requestProfileSaveOtp} className="mt-4 grid grid-cols-1 gap-4">
+              <form onSubmit={saveProfile} className="mt-4 grid grid-cols-1 gap-4">
                 <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">👤 Full Name</label>
                 <input
                   name="name"
@@ -558,7 +571,7 @@ const Profile = () => {
                   disabled={saveLoading}
                   className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-70"
                 >
-                  {saveLoading ? 'Sending OTP...' : 'Save Changes'}
+                  {saveLoading ? 'Saving...' : 'Save Changes'}
                 </button>
               </form>
             )}
@@ -577,7 +590,7 @@ const Profile = () => {
           {showSecurityBox && (
             <article className={glassCard}>
             <h2 className="text-lg font-semibold text-gray-900">Security</h2>
-            <p className="mt-1 text-sm text-gray-500">Update password with OTP confirmation.</p>
+            <p className="mt-1 text-sm text-gray-500">Update your password after confirming current password.</p>
 
             {passwordMessage && (
               <div
@@ -599,30 +612,6 @@ const Profile = () => {
                 className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                 placeholder="Current password"
               />
-
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">OTP</label>
-                  <button
-                    type="button"
-                    onClick={requestPasswordOtp}
-                    className="text-xs font-semibold text-blue-600 hover:underline"
-                  >
-                    Send OTP
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={passwordForm.otp}
-                  onChange={(event) =>
-                    setPasswordForm((prev) => ({ ...prev, otp: event.target.value }))
-                  }
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                  placeholder="6-digit OTP"
-                />
-                {passwordOtpStatus && <p className="mt-1 text-xs text-gray-500">{passwordOtpStatus}</p>}
-              </div>
 
               <input
                 type="password"
@@ -662,6 +651,32 @@ const Profile = () => {
         </div>
 
         <div className="space-y-6">
+          <article className={`${glassCard} relative min-h-[240px] bg-gray-50/80`}>
+
+            <h4 className="text-4 font-semibold text-gray-900">Chats</h4>
+            <p className="mt-2 max-w-[90%] text-lg text-gray-500">Continue your conversations with charger owners and renters.</p>
+
+            {chatsLoading && <p className="mt-8 text-sm text-gray-500">Loading chats...</p>}
+            {!chatsLoading && chatsError && <p className="mt-8 text-sm text-red-600">{chatsError}</p>}
+            {!chatsLoading && !chatsError && (
+              <p className="mt-8 text-4xl font-semibold text-gray-700">Open your conversations instantly.</p>
+            )}
+
+            {!chatsLoading && !chatsError && recentChats.length > 0 && (
+              <p className="mt-3 text-xs text-gray-500">
+                Last active: {formatChatTime(recentChats[0]) || 'Recently'}
+              </p>
+            )}
+
+            <button
+              type="button"
+              className="mt-8 inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              onClick={() => navigate('/chats')}
+            >
+              Open Chats
+            </button>
+          </article>
+
           <article className={glassCard}>
             <p className="text-sm text-gray-500">Wallet Balance</p>
             {addingMoney || !user ? (
@@ -714,56 +729,6 @@ const Profile = () => {
           </article>
         </div>
       </div>
-
-      {showOtpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-xl font-semibold text-gray-900">Verify Profile Update</h3>
-            <p className="mt-1 text-sm text-gray-500">Enter the OTP sent to your email to commit profile changes.</p>
-
-            {otpMessage && (
-              <div
-                className={`mt-3 rounded px-3 py-2 text-sm ${
-                  otpMessage.toLowerCase().includes('failed') || otpMessage.toLowerCase().includes('enter')
-                    ? 'bg-red-50 text-red-700'
-                    : 'bg-blue-50 text-blue-700'
-                }`}
-              >
-                {otpMessage}
-              </div>
-            )}
-
-            <form onSubmit={verifyProfileSaveOtp} className="mt-4 space-y-4">
-              <input
-                value={profileOtp}
-                onChange={(event) => setProfileOtp(event.target.value)}
-                maxLength={6}
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                placeholder="Enter OTP"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700"
-                  onClick={() => {
-                    setShowOtpModal(false);
-                    setPendingProfilePayload(null);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={otpLoading || !pendingProfilePayload}
-                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-70"
-                >
-                  {otpLoading ? 'Verifying...' : 'Verify & Save'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {showTransactionsModal && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/30">

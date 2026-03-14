@@ -7,11 +7,9 @@ const Login = () => {
     email: '',
     password: '',
   });
-  const [otp, setOtp] = useState('');
-  const [step, setStep] = useState('credentials');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, verifyLoginOtp } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -28,18 +26,13 @@ const Login = () => {
     setLoading(true);
 
     try {
-      if (step === 'credentials') {
-        await login(formData);
-        setStep('otp');
-      } else {
-        await verifyLoginOtp({ email: formData.email, otp });
-        const redirect =
-          location.state?.redirectTo ||
-          sessionStorage.getItem('redirectAfterLogin') ||
-          '/my-bookings';
-        sessionStorage.removeItem('redirectAfterLogin');
-        navigate(redirect);
-      }
+      await login(formData);
+      const redirect =
+        location.state?.redirectTo ||
+        sessionStorage.getItem('redirectAfterLogin') ||
+        '/my-bookings';
+      sessionStorage.removeItem('redirectAfterLogin');
+      navigate(redirect);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Login failed');
     } finally {
@@ -74,40 +67,23 @@ const Login = () => {
                 className="input mt-1"
                 value={formData.email}
                 onChange={handleChange}
-                disabled={step === 'otp'}
               />
             </div>
 
-            {step === 'credentials' && (
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  className="input mt-1"
-                  value={formData.password}
-                  onChange={handleChange}
-                />
-              </div>
-            )}
-
-            {step === 'otp' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700">OTP</label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  required
-                  className="input mt-1"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                />
-              </div>
-            )}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                className="input mt-1"
+                value={formData.password}
+                onChange={handleChange}
+              />
+            </div>
           </div>
 
           <div>
@@ -116,14 +92,8 @@ const Login = () => {
               disabled={loading}
               className="btn btn-primary w-full"
             >
-              {loading ? 'Processing...' : step === 'credentials' ? 'Send OTP' : 'Verify & Sign in'}
+              {loading ? 'Processing...' : 'Sign in'}
             </button>
-          </div>
-
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <Link to="/forgot-password" className="text-primary-600 hover:text-primary-700">
-              Forgot password?
-            </Link>
           </div>
 
           <div className="text-center">

@@ -15,6 +15,32 @@ const formatTime = (dateString) => {
   return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+const getMessageKey = (message = {}) => {
+  if (message._id) return `id:${message._id}`;
+  if (message.id) return `id:${message.id}`;
+  return `fallback:${message.chatId || ''}:${message.senderId || ''}:${message.createdAt || ''}:${message.messageText || ''}`;
+};
+
+const upsertMessage = (list = [], incoming) => {
+  if (!incoming) return list;
+  const incomingKey = getMessageKey(incoming);
+  const existingIndex = list.findIndex((item) => getMessageKey(item) === incomingKey);
+  if (existingIndex === -1) {
+    return [...list, incoming];
+  }
+  const next = [...list];
+  next[existingIndex] = { ...next[existingIndex], ...incoming };
+  return next;
+};
+
+const dedupeMessages = (list = []) => {
+  const byKey = new Map();
+  list.forEach((item) => {
+    byKey.set(getMessageKey(item), item);
+  });
+  return Array.from(byKey.values());
+};
+
 const Chat = () => {
   const { chatId: routeChatId } = useParams();
   const location = useLocation();
@@ -42,7 +68,7 @@ const Chat = () => {
 
     socket.on('message:new', ({ message }) => {
       if (message.chatId === selectedChatRef.current) {
-        setMessages((prev) => [...prev, message]);
+        setMessages((prev) => upsertMessage(prev, message));
       }
       fetchChats(false);
     });
@@ -145,7 +171,7 @@ const Chat = () => {
     try {
       setLoadingMessages(true);
       const res = await chatService.getMessages(chatId);
-      setMessages(res.data.messages || []);
+      setMessages(dedupeMessages(res.data.messages || []));
     } catch (err) {
       setError('Unable to load messages');
     } finally {
@@ -181,7 +207,7 @@ const Chat = () => {
       const trimmed = input.trim();
       setInput('');
       const res = await chatService.sendMessage(selectedChatId, trimmed);
-      setMessages((prev) => [...prev, res.data.message]);
+      setMessages((prev) => upsertMessage(prev, res.data.message));
       fetchChats(false);
     } catch (err) {
       const message = err?.response?.data?.message || 'Unable to send message';
