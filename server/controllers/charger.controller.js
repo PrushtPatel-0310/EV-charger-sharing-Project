@@ -55,7 +55,7 @@ export const getAllChargers = async (req, res, next) => {
       .limit(parseInt(limit));
 
     const total = await Charger.countDocuments(query);
-
+// console.log(chargers);
     res.json({
       success: true,
       data: {

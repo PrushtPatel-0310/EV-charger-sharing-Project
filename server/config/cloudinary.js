@@ -8,9 +8,6 @@ cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
-  // cloud_name: 'dpndjkyby',
-  // api_key: '619387633756666',
-  // api_secret: 'Axw2KCabu_HsucLrSIsTecBYKPY',
 });
 cloudinary.api.ping()
   .then(() => console.log("✅ Cloudinary AUTH OK"))

@@ -75,7 +75,7 @@ const Map = ({
   };
 
   return (
-    <div className="w-full h-full min-h-96">
+    <div className="h-full min-h-[18rem] w-full sm:min-h-96">
       <MapContainer
         center={[resolvedCenter.lat, resolvedCenter.lng]}
         zoom={zoom || 5}

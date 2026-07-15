@@ -43,6 +43,17 @@ const ChargerDetail = () => {
 
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const isSelectedDateToday = selectedDate === todayIso;
+  const chargerImages = Array.isArray(charger?.images) ? charger.images.filter(Boolean) : [];
+
+  useEffect(() => {
+    setSelectedImageIndex(0);
+  }, [id]);
+
+  useEffect(() => {
+    if (selectedImageIndex >= chargerImages.length) {
+      setSelectedImageIndex(0);
+    }
+  }, [chargerImages.length, selectedImageIndex]);
 
   /* ------------------ FETCH CHARGER ------------------ */
   useEffect(() => {
@@ -394,32 +405,56 @@ const ChargerDetail = () => {
   /* ------------------ JSX ------------------ */
   return (
   <>
-    <div className="container mx-auto max-w-6xl px-4 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+    <div className="container mx-auto max-w-6xl px-4 py-6 sm:py-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10">
 
         {/* LEFT: Images + Map */}
         <div className="space-y-6">
           {/* Image */}
-          <div className="rounded-xl overflow-hidden shadow">
-            {charger.images?.length ? (
+          <div className="overflow-hidden rounded-xl shadow">
+            {chargerImages.length ? (
               <img
-                src={charger.images[selectedImageIndex]}
+                src={chargerImages[selectedImageIndex] || chargerImages[0]}
                 alt={charger.title}
-                className="w-full h-80 object-cover"
+                className="h-64 w-full object-cover sm:h-72 lg:h-80"
               />
             ) : (
-              <div className="h-80 bg-gray-200 flex items-center justify-center">
+              <div className="flex h-64 items-center justify-center bg-gray-200 sm:h-72 lg:h-80">
                 No Image
               </div>
             )}
           </div>
 
+          {chargerImages.length > 1 && (
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+              {chargerImages.map((imageUrl, index) => (
+                <button
+                  key={imageUrl || index}
+                  type="button"
+                  onClick={() => setSelectedImageIndex(index)}
+                  className={`overflow-hidden rounded-lg border-2 transition ${
+                    selectedImageIndex === index
+                      ? 'border-primary-600 ring-2 ring-primary-200'
+                      : 'border-transparent opacity-80 hover:opacity-100'
+                  }`}
+                  aria-label={`View charger image ${index + 1}`}
+                >
+                  <img
+                    src={imageUrl}
+                    alt={`${charger.title} ${index + 1}`}
+                    className="h-20 w-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Map */}
-          <div className="rounded-xl overflow-hidden border">
+          <div className="overflow-hidden rounded-xl border">
             <div className="px-4 py-2 font-semibold bg-gray-50">
               Location
             </div>
-            <div className="h-64">
+            <div className="h-56 sm:h-64">
               <Map
                 chargers={[charger]}
                 center={[
@@ -435,8 +470,8 @@ const ChargerDetail = () => {
         {/* RIGHT: Details + Booking */}
         <div className="space-y-6">
           {/* Charger Info */}
-          <div className="bg-white rounded-xl shadow p-6">
-            <h1 className="text-3xl font-bold">{charger.title}</h1>
+          <div className="rounded-xl bg-white p-5 shadow sm:p-6">
+            <h1 className="text-2xl font-bold sm:text-3xl">{charger.title}</h1>
             <p className="text-gray-600 mt-2">{charger.description}</p>
             <p className="mt-3 text-sm text-gray-700 break-words">
               <span className="font-semibold">Address:</span>{' '}
@@ -452,7 +487,7 @@ const ChargerDetail = () => {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+            <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 sm:gap-4">
               <div><b>Type:</b> {charger.chargerType}</div>
               <div><b>Connector:</b> {charger.connectorType}</div>
               <div><b>Power:</b> {charger.powerOutput} kW</div>
@@ -461,8 +496,8 @@ const ChargerDetail = () => {
           </div>
 
           {/* Booking Card */}
-          <div className="bg-white rounded-xl shadow p-6">
-  <h2 className="text-xl font-bold mb-4">Book Charger</h2>
+          <div className="rounded-xl bg-white p-5 shadow sm:p-6">
+  <h2 className="mb-4 text-xl font-bold">Book Charger</h2>
 
   {isOwner && (
     <p className="text-gray-600 text-sm mb-3">
@@ -485,7 +520,7 @@ const ChargerDetail = () => {
   {loadingSlots && <p className="text-sm">Loading slots...</p>}
   {slotsError && <p className="text-sm text-red-600">{slotsError}</p>}
 
-  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-4">
+  <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
     {slots.map((slot) => {
       const slotStartTime = extractSlotStartTime(slot);
       const isPastSlot = isSlotInPast(selectedDate || slot.start, slotStartTime);
@@ -660,14 +695,14 @@ const ChargerDetail = () => {
             </div>
           </div>
 
-          <div className="flex gap-3 mt-6">
-            <button onClick={closeConfirm} className="btn w-1/2">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <button onClick={closeConfirm} className="btn w-full sm:w-1/2">
               Cancel
             </button>
             <button
               onClick={confirmBooking}
               disabled={hasInsufficientBalance || submitting}
-              className="btn btn-primary w-1/2"
+              className="btn btn-primary w-full sm:w-1/2"
             >
               {submitting ? 'Processing...' : 'Confirm'}
             </button>
@@ -683,7 +718,7 @@ const ChargerDetail = () => {
     {/* SUCCESS MODAL */}
     {showSuccess && confirmationDetails && (
       <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 text-center space-y-4">
+        <div className="w-full max-w-md rounded-xl bg-white p-6 text-center space-y-4 shadow-xl">
           <h3 className="text-2xl font-bold text-green-600">Slot Confirmed</h3>
           <p className="text-sm text-gray-700">Your booking is confirmed.</p>
           <div className="text-sm space-y-1">
@@ -728,15 +763,15 @@ const ChargerDetail = () => {
         <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 text-center space-y-4">
           <h3 className="text-xl font-bold">Login Required</h3>
           <p className="text-sm text-gray-700">You need to log in to book slots.</p>
-          <div className="flex gap-3 mt-4">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <button
-              className="btn w-1/2"
+              className="btn w-full sm:w-1/2"
               onClick={() => setShowLoginPrompt(false)}
             >
               Cancel
             </button>
             <button
-              className="btn btn-primary w-1/2"
+              className="btn btn-primary w-full sm:w-1/2"
               onClick={() => {
                 sessionStorage.setItem('redirectAfterLogin', location.pathname);
                 navigate('/login', { state: { redirectTo: location.pathname } });

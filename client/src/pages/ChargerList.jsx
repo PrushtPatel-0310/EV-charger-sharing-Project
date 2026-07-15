@@ -5,7 +5,7 @@ import FilterBar from '../components/FilterBar.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const DEFAULT_FILTERS = {
-  maxPrice: 1000,
+  maxPrice: null,
   distance: 'any',
   chargerType: 'any',
   powerOutput: 'any',
@@ -38,17 +38,23 @@ const ChargerList = () => {
   useEffect(() => {
     setFilters((prev) => ({
       ...prev,
-      maxPrice: Math.min(prev.maxPrice, priceCeiling),
+      maxPrice: prev.maxPrice === null ? null : Math.min(prev.maxPrice, priceCeiling),
     }));
   }, [priceCeiling]);
 
   const clearFilters = () => {
-    setFilters({ ...DEFAULT_FILTERS, maxPrice: priceCeiling });
+    setFilters(DEFAULT_FILTERS);
     setSortBy('cheapest');
   };
 
   const visibleChargers = useMemo(() => {
     const currentUserId = user?._id;
+    const hasActiveFilters =
+      filters.availableNow ||
+      filters.distance !== 'any' ||
+      filters.chargerType !== 'any' ||
+      filters.powerOutput !== 'any' ||
+      filters.maxPrice !== null;
 
     const filtered = chargers.filter((charger) => {
       const ownerId =
@@ -61,10 +67,14 @@ const ChargerList = () => {
 
       if (isOwnCharger || isDisabled) return false;
 
+      if (!hasActiveFilters) return true;
+
       if (filters.availableNow && charger?.availability?.isAvailable === false) return false;
 
       // If the slider is at max, treat price as "no filter".
-      if (filters.maxPrice < priceCeiling && getPrice(charger) > filters.maxPrice) return false;
+      if (filters.maxPrice !== null && filters.maxPrice < priceCeiling && getPrice(charger) > filters.maxPrice) {
+        return false;
+      }
 
       if (filters.distance !== 'any' && getDistance(charger) > Number(filters.distance)) return false;
 

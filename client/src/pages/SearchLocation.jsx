@@ -55,11 +55,11 @@ const SearchLocation = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-4">
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="container mx-auto space-y-4 px-4 py-6 sm:py-8">
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900">Find chargers anywhere</h1>
+            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Find chargers anywhere</h1>
             <p className="text-sm text-gray-600">Type a city or area and we will fly the map there.</p>
           </div>
           <form onSubmit={handleCitySearch} className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center">
@@ -75,7 +75,7 @@ const SearchLocation = () => {
             </div>
             <button
               type="submit"
-              className="btn btn-primary min-w-[130px]"
+              className="btn btn-primary min-w-[130px] w-full lg:w-auto"
               disabled={searching}
             >
               {searching ? 'Searching...' : 'Search'}
@@ -125,10 +125,10 @@ const SearchLocation = () => {
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-2 shadow-sm">
-        <div className="inline-flex rounded-xl bg-gray-100 p-1">
+        <div className="inline-flex w-full rounded-xl bg-gray-100 p-1 sm:w-auto">
           <button
             type="button"
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+            className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors sm:flex-none ${
               viewMode === 'list' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600'
             }`}
             onClick={() => setViewMode('list')}
@@ -137,7 +137,7 @@ const SearchLocation = () => {
           </button>
           <button
             type="button"
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+            className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors sm:flex-none ${
               viewMode === 'map' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-600'
             }`}
             onClick={() => setViewMode('map')}
@@ -184,7 +184,7 @@ const SearchLocation = () => {
           </div>
         )}
 
-        <div className="sticky top-4 h-[calc(100vh-230px)] overflow-hidden rounded-3xl border border-gray-200 shadow-lg">
+        <div className="h-[55vh] overflow-hidden rounded-3xl border border-gray-200 shadow-lg lg:sticky lg:top-4 lg:h-[calc(100vh-230px)]">
           <Map
             chargers={chargers}
             zoom={12}

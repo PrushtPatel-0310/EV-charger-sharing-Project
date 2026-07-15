@@ -14,12 +14,30 @@ const Layout = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-white shadow-sm">
-        <nav className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="text-2xl font-bold text-primary-600">
+        <nav className="container mx-auto px-4 py-3 sm:py-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center justify-between gap-3">
+              <Link to="/" className="text-xl font-bold text-primary-600 sm:text-2xl">
               ChargeMate.in
-            </Link>
-            <div className="flex items-center gap-5">
+              </Link>
+              <div className="relative md:hidden">
+                {isAuthenticated ? (
+                  <Link
+                    to="/profile"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-bold text-primary-700 ring-2 ring-primary-200"
+                    aria-label="Profile"
+                  >
+                    {avatarInitial}
+                  </Link>
+                ) : (
+                  <Link to="/login" className="btn btn-primary px-3 py-2 text-sm">
+                    Login
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 overflow-x-auto pb-1 md:flex-wrap md:justify-end md:overflow-visible md:pb-0">
               <NavLink to="/chargers" className={tabClassName}>
                 Browse Chargers
               </NavLink>
@@ -35,13 +53,11 @@ const Layout = () => {
                     My Bookings
                   </NavLink>
                   {user?.role === 'owner' || user?.role === 'both' ? (
-                    <>
-                      <NavLink to="/my-chargers" className={tabClassName}>
-                        My Chargers
-                      </NavLink>
-                    </>
+                    <NavLink to="/my-chargers" className={tabClassName}>
+                      My Chargers
+                    </NavLink>
                   ) : null}
-                  <div className="relative ml-1">
+                  <div className="relative ml-1 hidden md:block">
                     <Link
                       to="/profile"
                       className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-bold text-primary-700 ring-2 ring-primary-200"
@@ -57,14 +73,9 @@ const Layout = () => {
                   </div>
                 </>
               ) : (
-                <>
-                  <NavLink to="/login" className={tabClassName}>
-                    Login
-                  </NavLink>
-                  <Link to="/register" className="btn btn-primary">
-                    Sign Up
-                  </Link>
-                </>
+                <Link to="/register" className="btn btn-primary hidden md:inline-flex">
+                  Sign Up
+                </Link>
               )}
             </div>
           </div>

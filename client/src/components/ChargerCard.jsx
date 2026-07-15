@@ -20,7 +20,7 @@ const ChargerCard = ({ charger, isSelected, onSelect }) => {
 
   return (
     <div
-      className={`h-[360px] overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${
+      className={`flex h-full min-h-[20rem] cursor-pointer flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${
         isSelected
           ? 'border-primary-500 shadow-[0_8px_24px_rgba(59,130,246,0.20)] scale-[1.02]'
           : 'border-gray-200'
@@ -36,7 +36,7 @@ const ChargerCard = ({ charger, isSelected, onSelect }) => {
       role="button"
       tabIndex={0}
     >
-      <div className="relative h-[78%] w-full bg-gray-100">
+      <div className="relative aspect-[4/3] w-full bg-gray-100 sm:aspect-[16/10]">
         {charger.images?.length ? (
           <img
             src={charger.images[0]}
@@ -60,8 +60,8 @@ const ChargerCard = ({ charger, isSelected, onSelect }) => {
         </div>
       </div>
 
-      <div className="flex h-[22%] items-center justify-between gap-3 px-3 py-2">
-        <div className="min-w-0">
+      <div className="flex flex-1 flex-col justify-between gap-3 px-3 py-3 sm:flex-row sm:items-center">
+        <div className="min-w-0 flex-1">
           <h3 className="truncate text-base font-bold text-gray-900">{charger.title}</h3>
           <p className="truncate text-xs text-gray-500">{cityName}</p>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -79,7 +79,7 @@ const ChargerCard = ({ charger, isSelected, onSelect }) => {
           </div>
         </div>
 
-        <p className="shrink-0 text-right text-2xl font-extrabold leading-none text-green-600">
+        <p className="shrink-0 text-left text-2xl font-extrabold leading-none text-green-600 sm:text-right">
           ₹{price}
           <span className="block text-[11px] font-semibold text-green-700">/ {priceUnit}</span>
         </p>

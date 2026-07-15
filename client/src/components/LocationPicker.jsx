@@ -137,21 +137,21 @@ const LocationPicker = ({
 
   return (
     <div className="space-y-4">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
         <h3 className="font-semibold text-blue-900 mb-3">Select Location</h3>
 
-        <div className="flex gap-2 mb-3">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
             onClick={handleGetCurrentLocation}
-            className="btn btn-sm bg-blue-600 text-white"
+            className="btn bg-blue-600 px-3 py-2 text-sm text-white"
           >
             📍 Use My Location
           </button>
         </div>
 
         <div className="mb-3">
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input
               type="text"
               value={searchAddress}
@@ -162,7 +162,7 @@ const LocationPicker = ({
             <button
               type="button"
               onClick={handleAddressSearch}
-              className="btn btn-sm bg-blue-600 text-white"
+              className="btn bg-blue-600 px-3 py-2 text-sm text-white"
             >
               Search
             </button>
@@ -192,7 +192,7 @@ const LocationPicker = ({
         {!disableManualEntry && (
           <div className="mb-3">
             <label className="block text-sm font-medium text-gray-700 mb-2">Or enter coordinates</label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <input
                 type="number"
                 name="lat"
@@ -216,7 +216,7 @@ const LocationPicker = ({
               <button
                 type="button"
                 onClick={handleManualCoordinates}
-                className="btn btn-sm bg-blue-600 text-white"
+                className="btn bg-blue-600 px-3 py-2 text-sm text-white"
               >
                 Set
               </button>
@@ -231,7 +231,7 @@ const LocationPicker = ({
         </div>
       </div>
 
-      <div className="h-96 border border-gray-200 rounded-lg overflow-hidden">
+      <div className="h-72 overflow-hidden rounded-lg border border-gray-200 sm:h-96">
         <MapContainer
           key={`map-${position.lat}-${position.lng}`}
           center={[position.lat, position.lng]}

@@ -11,12 +11,13 @@ const FilterBar = ({
     onFilterChange((prev) => ({ ...prev, [key]: value }));
   };
 
-  const isPriceFilterActive = filters.maxPrice < priceCeiling;
+  const priceValue = filters.maxPrice ?? priceCeiling;
+  const isPriceFilterActive = filters.maxPrice !== null && filters.maxPrice < priceCeiling;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-3xl rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+      <div className="w-full max-h-[92vh] overflow-y-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-xl sm:max-w-3xl sm:rounded-2xl">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-gray-900">Filter Chargers</h2>
           <button
             type="button"
@@ -30,17 +31,17 @@ const FilterBar = ({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <div className="mb-1 text-xs font-semibold text-gray-600">Price Range</div>
-          <input
-            type="range"
-            min={0}
-            max={priceCeiling}
-            step={5}
-            value={filters.maxPrice}
-            onChange={(event) => handleChange('maxPrice', Number(event.target.value))}
-            className="w-full"
-          />
+            <input
+              type="range"
+              min={0}
+              max={priceCeiling}
+              step={5}
+              value={priceValue}
+              onChange={(event) => handleChange('maxPrice', Number(event.target.value))}
+              className="w-full"
+            />
             <div className="mt-1 text-xs text-gray-500">
-              {isPriceFilterActive ? `Up to ₹${filters.maxPrice} / kWh` : `Max set (₹${priceCeiling}): showing all prices`}
+              {isPriceFilterActive ? `Up to ₹${priceValue} / kWh` : `Max set (₹${priceCeiling}): showing all prices`}
             </div>
           </div>
 
@@ -133,7 +134,7 @@ const FilterBar = ({
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClear}

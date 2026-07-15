@@ -271,8 +271,8 @@ const handleAddressUpdate = ({ displayName, address = {} }) => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">List Your Charger</h1>
+    <div className="container mx-auto px-4 py-6 sm:py-8">
+      <h1 className="mb-6 text-2xl font-bold sm:mb-8 sm:text-3xl">List Your Charger</h1>
 
       <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
         {error && (
@@ -619,18 +619,18 @@ const handleAddressUpdate = ({ displayName, address = {} }) => {
         </div>
 
         {/* Submit Buttons */}
-        <div className="flex gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary"
+            className="btn btn-primary w-full sm:w-auto"
           >
             {loading ? 'Creating...' : 'List Charger'}
           </button>
           <button
             type="button"
             onClick={() => navigate('/my-chargers')}
-            className="btn btn-secondary"
+            className="btn btn-secondary w-full sm:w-auto"
           >
             Cancel
           </button>
