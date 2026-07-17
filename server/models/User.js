@@ -22,7 +22,8 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
     phone: {
-      type: String,
+      type: Number,
+      required:[true,"enter 10 digit phone number"],
       trim: true,
     },
     role: {

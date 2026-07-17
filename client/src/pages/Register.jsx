@@ -12,6 +12,7 @@ const Register = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -29,7 +30,7 @@ const Register = () => {
 
     try {
       await register(formData);
-      navigate('/my-bookings');
+      navigate('/chargers');
     } catch (err) {
       console.error('Registration error:', err);
       
@@ -101,34 +102,56 @@ const Register = () => {
               />
             </div>
             <>
+              <div> 
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700"> Phone </label> 
+               <input
+  id="phone"
+  name="phone"
+  type="text"
+  className="input mt-1"
+  value={formData.phone}
+  maxLength={10}
+  inputMode="numeric"
+  onChange={(e) => {
+    const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+
+    setFormData({
+      ...formData,
+      phone: value,
+    });
+  }}
+/>
+                </div>
+                
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                  Phone (optional)
-                </label>
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  className="input mt-1"
-                  value={formData.phone}
-                  onChange={handleChange}
-                />
-              </div>
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  minLength={6}
-                  className="input mt-1"
-                  value={formData.password}
-                  onChange={handleChange}
-                />
-              </div>
+  <label
+    htmlFor="password"
+    className="block text-sm font-medium text-gray-700"
+  >
+    Password
+  </label>
+
+  <div className="relative mt-1">
+    <input
+      id="password"
+      name="password"
+      type={showPassword ? "text" : "password"}
+      required
+      minLength={6}
+      className="input pr-12 w-full"
+      value={formData.password}
+      onChange={handleChange}
+    />
+
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute inset-y-0 right-3 flex items-center text-sm text-gray-500 hover:text-gray-700"
+    >
+      {showPassword ? "Hide" : "Show"}
+    </button>
+  </div>
+</div>
               <div>
                 <label htmlFor="role" className="block text-sm font-medium text-gray-700">
                   I want to
